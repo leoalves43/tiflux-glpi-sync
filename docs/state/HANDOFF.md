@@ -9,7 +9,7 @@ DONE (2026-10-06):
   egress IP. Waiting on prefeitura TI. VPS `.env` needs 644.
 
 NEXT:
-1. Push to GitHub if not done; on VPS `git pull`.
+1. On VPS: `git pull` (GitHub has 3ab61fc, phone sync).
 2. After IP is allowed: `docker compose stop` locally, `up -d --build` on VPS.
 
 RISKS:
