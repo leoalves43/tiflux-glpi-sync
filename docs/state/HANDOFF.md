@@ -5,7 +5,7 @@ DONE (2026-10-06), all pushed, local container rebuilt, 265 tests green:
   Tiflux answers published oldest-first (1face39).
 - Hand-opened Tiflux tickets reconciled: 34840/364448, 34841/359311 full sync;
   29197/350369, 30489/353936, 32274/358390 only new activity (old seeded);
-  33545/361210 closed; GLPI 34848 created for #188191, 15 answers, dates fixed.
+  33545/361210 closed; GLPI 34848 created for #188191; 34848/34841 dates fixed.
 - VPS deploy STOPPED: GLPI Caddy 302s the VPS IP (waiting on prefeitura TI).
 
 NEXT:
