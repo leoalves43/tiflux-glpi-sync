@@ -11,6 +11,7 @@ class FakeGlpiClient:
         self.followups: dict[int, list[dict]] = {}
         self.requerentes: dict[int, tuple[str, str | None, int | None]] = {}
         self.nomes_usuarios: dict[int, str] = {}
+        self.telefones_chamado: dict[int, str] = {}
         self.anexos: dict[int, tuple[list, list]] = {}
         self.anexos_followup: dict[int, tuple[list, list]] = {}
         self.followups_criados: list[dict] = []
@@ -40,6 +41,9 @@ class FakeGlpiClient:
 
     def obter_requerente(self, id_chamado, ticket):
         return self.requerentes.get(id_chamado, ("Desconhecido", None, None))
+
+    def obter_telefone_chamado(self, id_chamado):
+        return self.telefones_chamado.get(id_chamado)
 
     def obter_nome_usuario(self, id_usuario):
         return self.nomes_usuarios.get(id_usuario, "Desconhecido")
@@ -94,6 +98,7 @@ class FakeTifluxClient:
         self.cliente_id = 762707
         self.mesas_validas: set[int] | None = None
         self.id_solicitante = (3758056, "Ju STII (Padrão)")
+        self.solicitantes_pedidos: list[tuple[str, str | None, str | None]] = []
         self.resultado_criar_ticket: tuple[str | None, str | None] = ("T-1", None)
         self.resultado_buscar_ticket_existente: tuple[str | None, str | None] = (None, None)
         self.ticket_tiflux: dict | None = {}
@@ -115,7 +120,8 @@ class FakeTifluxClient:
     def obter_ticket(self, ticket_number):
         return self.ticket_tiflux, (200 if self.ticket_tiflux is not None else 404)
 
-    def obter_id_solicitante(self, nome_glpi, email_glpi):
+    def obter_id_solicitante(self, nome_glpi, email_glpi, telefone=None):
+        self.solicitantes_pedidos.append((nome_glpi, email_glpi, telefone))
         return self.id_solicitante
 
     def buscar_ticket_por_chamado_glpi(self, id_chamado):

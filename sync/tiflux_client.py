@@ -93,17 +93,36 @@ class TifluxClient:
             return set()  # não bloqueia, deixa a API acusar na criação
         return {m.get("id") for m in resp.json()}
 
-    def obter_id_solicitante(self, nome_glpi: str, email_glpi: str | None) -> tuple[int, str]:
+    def obter_id_solicitante(
+        self, nome_glpi: str, email_glpi: str | None, telefone: str | None = None,
+    ) -> tuple[int, str]:
+        """
+        Acha (ou cadastra) o solicitante pelo e-mail e grava o telefone do chamado
+        nele — a mesa FINANÇAS exige telefone e recusava o ticket sem (chamado #34812).
+        Ex.: tiflux.obter_id_solicitante("Ana", "ana@x.com", "+551239828120") -> (5, "Ana (Existente ...)")
+        """
         if not email_glpi:
             return self._id_solicitante_padrao, "Ju STII (Padrão - Sem E-mail no GLPI)"
 
         encontrado = self._buscar_solicitante_por_email(email_glpi)
-        if encontrado:
-            return encontrado
+        if not encontrado:
+            return self._cadastrar_solicitante(nome_glpi, email_glpi, telefone)
 
-        return self._cadastrar_solicitante(nome_glpi, email_glpi)
+        self._atualizar_telefone_solicitante(encontrado, telefone)
+        id_encontrado = encontrado.get("id")
+        return id_encontrado, f"{encontrado.get('name')} (Existente no TiFlux - ID: {id_encontrado})"
 
-    def _buscar_solicitante_por_email(self, email_glpi: str) -> tuple[int, str] | None:
+    def _atualizar_telefone_solicitante(self, solicitante: dict, telefone: str | None) -> None:
+        """Falha aqui só gera aviso: o ticket ainda pode ser aceito se a mesa não exigir telefone."""
+        if not telefone or solicitante.get("telephone") == telefone:
+            return
+        id_solicitante = solicitante.get("id")
+        url = f"{self._url_base}/clients/{self._cliente_id}/requestors/{id_solicitante}"
+        resp = self._session.put(url, json={"telephone": telefone}, headers=self._headers_json, timeout=self._timeout)
+        if resp.status_code != 200:
+            log(f"⚠️ Falha ao gravar telefone {telefone} no solicitante {id_solicitante} ({resp.status_code}): {resp.text}")
+
+    def _buscar_solicitante_por_email(self, email_glpi: str) -> dict | None:
         email_limpo = email_glpi.strip().lower()
         email_encoded = urllib.parse.quote(email_limpo)
         url_busca = f"{self._url_base}/clients/{self._cliente_id}/requestors?email={email_encoded}"
@@ -114,19 +133,21 @@ class TifluxClient:
             if isinstance(dados, list):
                 for item in dados:
                     if str(item.get("email", "")).strip().lower() == email_limpo:
-                        return item.get("id"), f"{item.get('name')} (Existente no TiFlux - ID: {item.get('id')})"
+                        return item
         elif resposta.status_code != 404:
             log(f"⚠️ Busca de solicitante retornou status inesperado ({resposta.status_code}): {resposta.text}")
 
         return None
 
-    def _cadastrar_solicitante(self, nome: str, email: str) -> tuple[int, str]:
+    def _cadastrar_solicitante(self, nome: str, email: str, telefone: str | None) -> tuple[int, str]:
         url_criar = f"{self._url_base}/clients/{self._cliente_id}/requestors"
         payload = {
             "name": nome if nome != "Desconhecido" else "Solicitante Sem Nome",
             "email": email,
             "can_open_ticket": True,
         }
+        if telefone:
+            payload["telephone"] = telefone
         resp = self._session.post(url_criar, json=payload, headers=self._headers_json, timeout=self._timeout)
         if resp.status_code in (200, 201):
             dados = resp.json()

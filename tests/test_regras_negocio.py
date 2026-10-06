@@ -7,6 +7,7 @@ from sync.regras_negocio import (
     definir_prioridade,
     definir_tecnico,
     depara_categoria,
+    telefone_para_tiflux,
 )
 
 _CONFIG_TESTE = Config(
@@ -96,3 +97,17 @@ class TestCabecalhoPrioridadeGlpi(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTelefoneParaTiflux(unittest.TestCase):
+    def test_fixo_com_mascara_vira_e164(self):
+        self.assertEqual(telefone_para_tiflux("(12) 3982-8120"), "+551239828120")
+
+    def test_celular_com_ddi_e_zero_de_operadora(self):
+        self.assertEqual(telefone_para_tiflux("+55 (12) 98267-4506"), "+5512982674506")
+        self.assertEqual(telefone_para_tiflux("012 98267-4506"), "+5512982674506")
+
+    def test_vazio_ou_incompleto_retorna_none(self):
+        self.assertIsNone(telefone_para_tiflux(None))
+        self.assertIsNone(telefone_para_tiflux(""))
+        self.assertIsNone(telefone_para_tiflux("3982-8120"))

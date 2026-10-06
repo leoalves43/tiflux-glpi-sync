@@ -13,6 +13,7 @@ from sync.regras_negocio import (
     definir_prioridade,
     definir_tecnico,
     depara_categoria,
+    telefone_para_tiflux,
 )
 from sync.tiflux_client import TifluxClient
 
@@ -63,7 +64,10 @@ def _processar(glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_chamad
 
     nome_solicitante, email_solicitante, _ = glpi.obter_requerente(id_chamado, ticket)
     id_tecnico_tiflux, nome_tecnico_tiflux = definir_tecnico(mesa_tiflux, config)
-    id_solicitante_tiflux, info_solicitante_tiflux = tiflux.obter_id_solicitante(nome_solicitante, email_solicitante)
+    telefone_solicitante = telefone_para_tiflux(glpi.obter_telefone_chamado(id_chamado))
+    id_solicitante_tiflux, info_solicitante_tiflux = tiflux.obter_id_solicitante(
+        nome_solicitante, email_solicitante, telefone_solicitante,
+    )
 
     form_data = _montar_form_data(
         ticket, config, mesa_tiflux, id_prioridade_tiflux,

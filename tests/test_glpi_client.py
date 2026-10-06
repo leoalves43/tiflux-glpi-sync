@@ -370,6 +370,26 @@ class TestObterRequerente(unittest.TestCase):
         self.assertEqual((nome, email, id_req), ("Desconhecido", None, None))
 
 
+class TestObterTelefoneChamado(unittest.TestCase):
+    def test_pega_telefone_do_chamado_exato(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/PluginFieldsTickettelefonelinha", FakeResponse(200, [
+            {"itemtype": "Ticket", "items_id": 134812, "telefonefield": "(11) 1111-1111"},
+            {"itemtype": "Ticket", "items_id": 34812, "telefonefield": "(12) 3982-8120"},
+        ]))
+        with patch("sync.glpi_client.requests", fake):
+            self.assertEqual(_client(fake).obter_telefone_chamado(34812), "(12) 3982-8120")
+
+    def test_sem_registro_ou_erro_retorna_none(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/PluginFieldsTickettelefonelinha", FakeResponse(200, []))
+        fake.programar("GET", "/PluginFieldsTickettelefonelinha", FakeResponse(400, ["ERROR"]))
+        with patch("sync.glpi_client.requests", fake):
+            client = _client(fake)
+            self.assertIsNone(client.obter_telefone_chamado(1))
+            self.assertIsNone(client.obter_telefone_chamado(1))
+
+
 class TestObterNomeUsuario(unittest.TestCase):
     def test_monta_nome_completo(self):
         fake = FakeRequests()

@@ -22,6 +22,10 @@ TIMEOUT_PADRAO_SEGUNDOS = 30
 # conexões concorrentes atrás do pool padrão (10) do requests.
 TAMANHO_LOTE_SONDAGEM_PADRAO = 10
 
+# Plugin Fields: bloco "Telefone / Linhas" do formulário de chamado. O cadastro
+# do usuário no GLPI vem do AD sem telefone; o contato só existe aqui.
+_ITEMTYPE_TELEFONE_CHAMADO = "PluginFieldsTickettelefonelinha"
+
 
 def _mensagem_de_recusa(resp: requests.Response) -> str | None:
     """
@@ -312,6 +316,20 @@ class GlpiClient:
 
         nome, email = self._dados_usuario(id_requerente)
         return nome, email, id_requerente
+
+    def obter_telefone_chamado(self, id_chamado: int) -> str | None:
+        """
+        Telefone de contato digitado no chamado (plugin Fields), como veio do GLPI.
+        searchText faz LIKE, então filtra o items_id exato.
+        Ex.: glpi.obter_telefone_chamado(34812) -> "(12) 3982-8120"
+        """
+        resp = self._get(f"/{_ITEMTYPE_TELEFONE_CHAMADO}", params={"searchText[items_id]": id_chamado})
+        if resp.status_code not in (200, 206) or not isinstance(resp.json(), list):
+            return None
+        for linha in resp.json():
+            if linha.get("itemtype") == "Ticket" and linha.get("items_id") == id_chamado:
+                return linha.get("telefonefield") or None
+        return None
 
     def _id_requerente(self, id_chamado: int, ticket: dict) -> int | None:
         resp_vinculos = self._get(f"/Ticket/{id_chamado}/Ticket_User")

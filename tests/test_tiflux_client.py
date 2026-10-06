@@ -75,6 +75,38 @@ class TestObterIdSolicitante(unittest.TestCase):
         self.assertEqual(id_solicitante, 8)
         self.assertIn("Cadastrado Automaticamente", info)
 
+    def test_existente_sem_telefone_recebe_telefone_do_chamado(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/requestors", FakeResponse(200, [{"id": 5, "email": "a@x.com", "name": "A", "telephone": ""}]))
+        fake.programar("PUT", "/requestors/5", FakeResponse(200, {"id": 5}))
+        with patch("sync.tiflux_client.requests", fake):
+            id_solicitante, _ = _client().obter_id_solicitante("A", "a@x.com", "+551239828120")
+        self.assertEqual(id_solicitante, 5)
+        self.assertEqual(fake.chamadas[-1][2]["json"], {"telephone": "+551239828120"})
+
+    def test_existente_com_mesmo_telefone_nao_atualiza(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/requestors", FakeResponse(200, [{"id": 5, "email": "a@x.com", "telephone": "+551239828120"}]))
+        with patch("sync.tiflux_client.requests", fake):
+            _client().obter_id_solicitante("A", "a@x.com", "+551239828120")
+        self.assertEqual([m for m, _, _ in fake.chamadas], ["GET"])
+
+    def test_falha_ao_gravar_telefone_mantem_solicitante(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/requestors", FakeResponse(200, [{"id": 5, "email": "a@x.com", "telephone": ""}]))
+        fake.programar("PUT", "/requestors/5", FakeResponse(422, text="invalido"))
+        with patch("sync.tiflux_client.requests", fake), _sem_console():
+            id_solicitante, _ = _client().obter_id_solicitante("A", "a@x.com", "+551239828120")
+        self.assertEqual(id_solicitante, 5)
+
+    def test_cadastro_novo_inclui_telefone(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/requestors", FakeResponse(404))
+        fake.programar("POST", "/requestors", FakeResponse(201, {"id": 8, "name": "Novo"}))
+        with patch("sync.tiflux_client.requests", fake):
+            _client().obter_id_solicitante("Novo", "novo@x.com", "+551239828120")
+        self.assertEqual(fake.chamadas[-1][2]["json"]["telephone"], "+551239828120")
+
     def test_falha_ao_cadastrar_usa_padrao(self):
         fake = FakeRequests()
         fake.programar("GET", "/requestors", FakeResponse(404))

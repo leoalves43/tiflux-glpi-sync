@@ -1,4 +1,6 @@
-"""Regras de negócio de tradução GLPI -> Tiflux: mesa, técnico e prioridade."""
+"""Regras de negócio de tradução GLPI -> Tiflux: mesa, técnico, prioridade e telefone."""
+
+import re
 
 from sync.config import Config
 
@@ -97,3 +99,17 @@ def cabecalho_prioridade_glpi(prioridade_glpi: int | None) -> str:
     """
     nome, sla = NIVEIS_PRIORIDADE_GLPI.get(prioridade_glpi, _NIVEL_PRIORIDADE_PADRAO)
     return f"Este chamado tem a prioridade: {nome}\n\n{sla}"
+
+
+def telefone_para_tiflux(telefone_glpi: str | None) -> str | None:
+    """
+    Normaliza o telefone digitado no GLPI (texto livre) pro formato E.164 que o
+    Tiflux guarda no solicitante; None se não for um número brasileiro reconhecível.
+    Ex.: telefone_para_tiflux("(12) 3982-8120") -> "+551239828120"
+    """
+    digitos = re.sub(r"\D", "", telefone_glpi or "").lstrip("0")
+    if len(digitos) in (12, 13) and digitos.startswith("55"):
+        digitos = digitos[2:]
+    if len(digitos) not in (10, 11):
+        return None
+    return f"+55{digitos}"

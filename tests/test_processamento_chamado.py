@@ -54,6 +54,13 @@ class TestProcessarChamado(unittest.TestCase):
         self.assertEqual(status, "erro")
         self.assertIn("não tem prioridade configurada", msg)
 
+    def test_telefone_do_chamado_vai_normalizado_pro_solicitante(self):
+        self.glpi.tickets[1] = _TICKET_FINANCAS
+        self.glpi.requerentes[1] = ("Ana", "ana@x.com", 7)
+        self.glpi.telefones_chamado[1] = "(12) 3982-8120"
+        processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
+        self.assertEqual(self.tiflux.solicitantes_pedidos, [("Ana", "ana@x.com", "+551239828120")])
+
     def test_erro_quando_criar_ticket_falha(self):
         self.glpi.tickets[1] = _TICKET_ARRECADACAO
         self.tiflux.resultado_criar_ticket = (None, "Falha ao criar ticket no Tiflux (500): boom")

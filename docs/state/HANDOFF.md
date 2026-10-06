@@ -1,24 +1,22 @@
 # Handoff
 
-DONE (2026-10-02):
-- Cascade close/reopen every cycle (`sync/mudancas_status_tiflux.py`, commit
-  1d1be78). 242 tests green; local container rebuilt, first run clean. Pushed.
-- VPS deploy (same host as Postgres) is built but STOPPED: the Caddy in front
-  of the GLPI answers 302 -> /pmc/ for the VPS egress IP. Waiting on prefeitura
-  TI to allow it. Local container is RUNNING meanwhile.
-- VPS `.env` needs 644 (or chown to container uid): 600 -> PermissionError.
+DONE (2026-10-06):
+- Requestor phone sync: GLPI ticket Fields plugin phone -> Tiflux requestor
+  (PUT when differs, on register too). Fixes 422 "Requestor telephone can not
+  be blank" on desk FINANÇAS (GLPI #34812, now Tiflux #364468). 252 tests green.
+  Local container rebuilt and running clean.
+- VPS deploy built but STOPPED: GLPI's Caddy answers 302 -> /pmc/ for the VPS
+  egress IP. Waiting on prefeitura TI. VPS `.env` needs 644.
 
 NEXT:
-1. On VPS: `git pull` (GitHub has the cascade change).
-2. After IP is allowed: `docker compose stop` locally, then
-   `docker compose up -d --build` on VPS, confirm clean run, `down` locally.
-3. PHP web interface paused (2026-10-01); README documents CLI/Docker only.
+1. Push to GitHub if not done; on VPS `git pull`.
+2. After IP is allowed: `docker compose stop` locally, `up -d --build` on VPS.
 
 RISKS:
 - Two schedulers on the same DB = duplicate Tiflux tickets/followups.
-- On the VPS, DB_HOST=public IP from inside the container: pg_hba/firewall must
-  accept the Docker bridge (172.16.0.0/12) as source.
-- GLPI técnico assign 400 ERROR_GLPI_ADD when already assigned manually — ignore.
-- Remote Postgres connection has no sslmode set — consider firewall/SSL.
+- Ticket without phone in the plugin on a desk that requires phone still 422s.
+- Plugin itemtype name is instance-specific (`sync/glpi_client.py` constant).
+- VPS: pg_hba/firewall must accept Docker bridge (172.16.0.0/12).
+- Remote Postgres has no sslmode set.
 
-CONTEXT: decisions/LOG.md 2026-10-02, specs/001-docker.md.
+CONTEXT: decisions/LOG.md 2026-10-06, 2026-10-02; specs/001-docker.md.
