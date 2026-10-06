@@ -7,12 +7,12 @@ DONE (2026-10-06):
 - Hand-opened Tiflux tickets reconciled: 34840/364448 and 34841/359311 linked
   (full sync); 29197/350369, 30489/353936, 32274/358390 linked with existing
   public followups/answers seeded as synced (only new activity flows);
-  33545/361210 closed in GLPI via `encerrar_legado`.
+  33545/361210 closed in GLPI via `encerrar_legado`. GLPI 34848 created by
+  hand for Tiflux #188191 (Finanças, requester 460) and linked; 15 answers synced.
 - Phone sync (3ab61fc). VPS deploy STOPPED: GLPI Caddy 302s the VPS IP.
 
 NEXT:
-1. Tiflux #188191 (Migração 2023, no GLPI id): user deciding.
-2. VPS `git pull`; after IP is allowed: `docker compose stop` locally,
+1. VPS `git pull`; after IP is allowed: `docker compose stop` locally,
    `up -d --build` on VPS.
 
 RISKS:
