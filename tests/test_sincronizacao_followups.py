@@ -188,6 +188,16 @@ class TestSincronizarFollowupsTifluxParaGlpi(unittest.TestCase):
         sincronizar_followups_tiflux_para_glpi(self.conn, _CONFIG, self.glpi, self.tiflux, 1, "T-1")
         self.assertEqual(self.glpi.followups_criados[0]["users_id"], _CONFIG.id_glpi_leo)
 
+    def test_respostas_sao_publicadas_da_mais_antiga_para_a_mais_nova(self):
+        # Regressão GLPI #34848: o Tiflux lista da mais nova pra mais antiga.
+        self.tiflux.respostas = [
+            {"id": 2, "name": "nova", "answer_time": "2025-01-01T10:00:00Z"},
+            {"id": 1, "name": "antiga", "answer_time": "2023-01-01T10:00:00Z"},
+        ]
+        sincronizar_followups_tiflux_para_glpi(self.conn, _CONFIG, self.glpi, self.tiflux, 1, "T-1")
+        conteudos = [f["conteudo"] for f in self.glpi.followups_criados]
+        self.assertTrue(conteudos[0].endswith("antiga") and conteudos[1].endswith("nova"))
+
     def test_resposta_de_origem_api_e_ignorada_eco(self):
         self.tiflux.respostas = [{"id": 1, "name": "eco", "answer_origin": "api"}]
         sucesso, erro = sincronizar_followups_tiflux_para_glpi(self.conn, _CONFIG, self.glpi, self.tiflux, 1, "T-1")

@@ -402,7 +402,9 @@ def sincronizar_followups_tiflux_para_glpi(
 
 def _publicar_respostas_publicas(conn, config, glpi: GlpiClient, id_chamado, numero_tiflux, respostas, ja_processados_ou_proprios, id_autor_glpi: int) -> tuple[int, int]:
     qtd_sucesso = qtd_erro = 0
-    for resposta in respostas:
+    # O Tiflux lista da mais nova pra mais antiga; publicar nessa ordem deixava a
+    # timeline do GLPI invertida quando várias entram de uma vez (GLPI #34848).
+    for resposta in sorted(respostas, key=lambda r: r.get("answer_time") or ""):
         if _deve_ignorar_resposta_publica(resposta, ja_processados_ou_proprios):
             continue
         id_origem = resposta.get("id")
