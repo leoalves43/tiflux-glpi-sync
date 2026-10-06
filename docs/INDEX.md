@@ -5,6 +5,8 @@
 - `docs/state/HANDOFF.md` — read first, every session. Current status, what's next, open risks.
 - `docs/specs/001-docker.md` — read when changing how/where the sync is scheduled or deployed.
 - `docs/plans/001-docker.md` — read with the spec above; task checklist for the Docker move.
+- `docs/specs/002-encerrar-legado.md` — read when closing in GLPI tickets opened by hand in Tiflux before the integration.
+- `docs/plans/002-encerrar-legado.md` — read with the spec above; task checklist.
 - `docs/data/audit_tables.toon` — read when writing SQL against either audit table (column names, types, conflict keys).
 
 No other docs exist. A path not listed above does not exist — don't assume it.

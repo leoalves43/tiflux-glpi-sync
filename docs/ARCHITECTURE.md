@@ -59,6 +59,7 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
 | `sync/mudancas_status_tiflux.py` | picks tickets recently closed/reopened in Tiflux so the cascade runs every cycle |
 | `sync/main.py` | `main()` — wiring, candidate selection, top-level logging |
 | `sync/forcar_sincronizacao.py` | `python -m sync.forcar_sincronizacao --id-glpi N` — manual backup for one ticket skipped by the cron; see below |
+| `sync/encerrar_legado.py` | `python -m sync.encerrar_legado --id-glpi N --numero-tiflux M` — one-off GLPI close for tickets opened by hand in Tiflux pre-integration; never writes `api_glpi_tiflux` (spec 002) |
 
 Clients are built once per run in `main()` and passed as parameters (no globals,
 no per-call re-auth); `TifluxClient` caches valid desks per instance.
@@ -76,8 +77,7 @@ Full DDL and column reference: `docs/data/audit_tables.toon`. Summary:
 
 - GLPI: session-token auth (`initSession`/`killSession`), sub-item pattern
   (`GET /Ticket/{id}/<SubItem>`), item creation via `{"input": {...}}` wrapper.
-  No local spec — GLPI's own REST conventions, verified live against the test
-  instance (10.3.3.68) during development.
+  No local spec — GLPI's own REST conventions, verified live during development.
 - Tiflux: bearer auth, documented in `openapi-spec-tiflux.json` (local file,
   1.7MB — grep it, don't read it whole). Three header dicts exist for a reason:
   `_headers_get` (GET only, no Content-Type — see comment in `TifluxClient.__init__`),

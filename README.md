@@ -93,6 +93,14 @@ Forçar a sincronização de um chamado específico que ficou fora da sondagem:
 docker compose run --rm sync python -m sync.forcar_sincronizacao --id-glpi 33769
 ```
 
+Encerrar no GLPI um chamado atendido por um ticket aberto à mão no Tiflux antes
+da integração (o ticket precisa estar fechado no Tiflux). Só encerra: não copia
+o histórico e o chamado não entra no ciclo automático:
+
+```bash
+docker compose run --rm sync python -m sync.encerrar_legado --id-glpi 33500 --numero-tiflux 360123
+```
+
 Testes, no mesmo ambiente de produção:
 
 ```bash
@@ -108,6 +116,7 @@ Requisitos: Python 3.10+, Postgres e acesso de rede ao GLPI e ao Tiflux. No
 pip install -r requirements.txt
 python glpi_tiflux.py                                    # uma execução
 python -m sync.forcar_sincronizacao --id-glpi 33769      # um chamado específico
+python -m sync.encerrar_legado --id-glpi 33500 --numero-tiflux 360123  # encerra legado
 python -m unittest discover -s tests -t .                # testes
 ```
 
