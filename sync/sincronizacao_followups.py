@@ -122,7 +122,7 @@ def _sincronizar_chamado_aberto(conn, config, glpi, tiflux, id_glpi, numero_tifl
     db_followups.registrar_chamado_aberto_varrido(conn, config, id_glpi, numero_tiflux)
 
     if ticket_tiflux and ticket_tiflux.get("is_closed"):
-        _encerrar_em_cascata(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_tiflux, totais)
+        encerrar_em_cascata(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_tiflux, totais)
 
 
 def _tratar_chamado_fechado_no_glpi(conn, config, glpi, id_glpi, numero_tiflux, ticket_glpi, ticket_tiflux, totais) -> None:
@@ -154,7 +154,7 @@ def _tratar_chamado_fechado_no_glpi(conn, config, glpi, id_glpi, numero_tiflux, 
 _SEM_RESPOSTA_TIFLUX = "Chamado encerrado no Tiflux, sem resposta pública registrada."
 
 
-def _encerrar_em_cascata(conn, config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi, numero_tiflux, ticket_tiflux: dict, totais) -> None:
+def encerrar_em_cascata(conn, config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi, numero_tiflux, ticket_tiflux: dict, totais) -> None:
     """
     Essa instalação do GLPI recusa (com HTTP 200 mas message não-vazia, ver
     GlpiClient._atualizar_chamado) mudar o status pra Solucionado sem técnico

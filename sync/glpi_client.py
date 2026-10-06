@@ -293,7 +293,7 @@ class GlpiClient:
         """
         GET /Ticket/{id}/ITILSolution — True se existe alguma solução que não
         tenha sido recusada pelo requerente. Uma solução recusada não conta:
-        o ciclo de encerramento em cascata (ver _encerrar_em_cascata) reabre
+        o ciclo de encerramento em cascata (ver encerrar_em_cascata) reabre
         o chamado e pode fechá-lo de novo mais tarde, e nesse reencerramento
         precisa de uma solução NOVA (o conteúdo mais recente do Tiflux) —
         contar a recusada como "já registrada" bloqueava isso pra sempre,
