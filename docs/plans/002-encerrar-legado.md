@@ -26,7 +26,7 @@ answer, status Solucionado, cascade audit row). Writes nothing to
 
 ## Tasks
 - [x] 1. Make `encerrar_em_cascata` public. Done: tests green.
-- [ ] 2. `sync/encerrar_legado.py` + tests for criteria 1–6 (FakeGlpiClient,
+- [x] 2. `sync/encerrar_legado.py` + tests for criteria 1–6 (FakeGlpiClient,
       FakeTifluxClient, FakeConnection). Done: tests green.
 - [ ] 3. Docs (README usage, ARCHITECTURE row, LOG line, INDEX, HANDOFF).
       Done: INDEX lists spec/plan 002.
