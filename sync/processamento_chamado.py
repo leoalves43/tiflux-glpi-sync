@@ -185,8 +185,13 @@ def _atualizar_titulo_glpi(glpi: GlpiClient, id_chamado: int, titulo_original: s
     na próxima execução — criando um ticket DUPLICADO no Tiflux (bug conhecido,
     ver db_followups.obter_chamados_para_varrer_followups). Só loga e segue.
     Retorna um resumo (string vazia se deu certo) pra anexar na mensagem final.
+    Título já prefixado à mão (vínculo de ticket aberto manualmente) fica como
+    está — GLPI #34840 virou "#364448 - #364448 - ..." sem essa checagem.
     """
-    novo_titulo = f"#{ticket_number_tiflux} - {titulo_original}"
+    prefixo = f"#{ticket_number_tiflux} - "
+    if (titulo_original or "").strip().startswith(prefixo):
+        return ""
+    novo_titulo = f"{prefixo}{titulo_original}"
     sucesso, erro = glpi.atualizar_titulo(id_chamado, novo_titulo)
     if sucesso:
         return ""

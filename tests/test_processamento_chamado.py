@@ -184,6 +184,13 @@ class TestProcessarChamado(unittest.TestCase):
         processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
         self.assertEqual(self.glpi.titulos_atualizados, [(1, "#361837 - Problema X")])
 
+    def test_titulo_ja_prefixado_a_mao_nao_e_prefixado_de_novo(self):
+        # Regressão GLPI #34840: virou "#364448 - #364448 - ...".
+        self.glpi.tickets[1] = {**_TICKET_ARRECADACAO, "name": " #361837 - Problema X"}
+        self.tiflux.resultado_buscar_ticket_existente = ("361837", None)
+        processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
+        self.assertEqual(self.glpi.titulos_atualizados, [])
+
     def test_erro_ao_buscar_ticket_existente_nao_cria_ticket(self):
         self.glpi.tickets[1] = _TICKET_ARRECADACAO
         self.tiflux.resultado_buscar_ticket_existente = (None, "2 tickets no Tiflux têm o chamado GLPI #1 no título")
