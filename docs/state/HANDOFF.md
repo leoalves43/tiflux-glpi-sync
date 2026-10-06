@@ -3,12 +3,13 @@
 DONE (2026-10-06):
 - Spec/plan 002: `sync.encerrar_legado` CLI (close GLPI for hand-opened Tiflux
   tickets, no history sync). 0f3e0f0: GLPI title not re-prefixed (GLPI #34840).
-  264 tests green. Local container rebuilt with both; pushed to GitHub.
+  265 tests green. Local container rebuilt with both; pushed to GitHub.
 - Hand-opened Tiflux tickets reconciled: 34840/364448 and 34841/359311 linked
   (full sync); 29197/350369, 30489/353936, 32274/358390 linked with existing
   public followups/answers seeded as synced (only new activity flows);
   33545/361210 closed in GLPI via `encerrar_legado`. GLPI 34848 created by
-  hand for Tiflux #188191 (Finanças, requester 460) and linked; 15 answers synced.
+  hand for Tiflux #188191 (Finanças, requester 460) and linked; 15 answers synced,
+  timeline fixed (date/date_creation = Tiflux time). 1face39: answers oldest-first.
 - Phone sync (3ab61fc). VPS deploy STOPPED: GLPI Caddy 302s the VPS IP.
 
 NEXT:
