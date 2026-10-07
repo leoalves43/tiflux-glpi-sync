@@ -9,7 +9,7 @@ DONE (2026-10-07), local container rebuilt, 324 tests green (3.14 + 3.13):
 NEXT:
 1. Spec 008 written, AWAITING USER APPROVAL (then plan). Proposal (change-driven Tiflux side: 1 `filter_by=open`
    listing + existing `update_start_datetime` listing; `/answers` only for updated tickets;
-   per-ticket GET only on transitions; small safety sweep). Then write spec 008.
+   per-ticket GET only on transitions; small safety sweep).
 2. VPS deploy PAUSED by user — don't bring it up until asked.
 3. Refactor 005 in prod: ticket create + cascade write still unconfirmed.
 
