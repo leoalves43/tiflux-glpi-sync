@@ -6,9 +6,9 @@ DONE (2026-10-07), local container rebuilt, 280 tests green:
   logs, retries every run; GLPI Solucionado scanned every run (#34759).
 
 NEXT:
-1. Tiflux #364160 needs reopening: API + user both get 403 on fully closed;
-   the integration then reopens GLPI #34759 and posts followup 77817.
-2. Tiflux admin: grant "Revisar e avaliar tickets fechados" to API user (or relink #34759).
+1. Spec/plan 005 (refactor) written, awaiting user go-ahead.
+2. Tiflux permission "Revisar e avaliar tickets fechados" requested for the
+   API user. #34759 closed by hand in GLPI; followup 77817 marked handled.
 3. VPS `git pull`; after GLPI allows the VPS IP: `docker compose stop`
    locally, `up -d --build` on VPS.
 
