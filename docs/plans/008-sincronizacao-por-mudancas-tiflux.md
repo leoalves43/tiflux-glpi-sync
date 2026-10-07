@@ -5,13 +5,16 @@
   execução — `GET /tickets?filter_by=open` (conjunto de abertos) e a de
   atualizados desde o checkpoint (já existe em `mudancas_status_tiflux`) — e
   devolve `PanoramaTiflux(abertos, atualizados, mudancas)` ou `None` se alguma
-  falhou ou veio cortada pelo teto de páginas.
+  falhou ou veio cortada pelo teto de páginas. O panorama também traz os pares da
+  varredura de segurança. `main()` lê o panorama e o passa para
+  `sincronizar_followups(..., panorama)`; com `None`, pula os followups. Ler fora do
+  orquestrador mantém intactas as filas de respostas do `FakeConnection` dos testes
+  de cascata/recusa (cada `execute` consome uma).
 - `TifluxClient._paginar` passa a levantar `ListagemTifluxIncompleta` (HTTP ≠ 200,
   corpo não-lista, teto de páginas atingido) em vez de devolver lista parcial.
   `listar_respostas`/`listar_comunicacoes_internas` mantêm o retorno `[]` atual,
   mas somam em `tiflux.listagens_com_falha`. Novo `listar_tickets_abertos()`.
-- `sincronizacao_followups`: panorama `None` -> log de aviso e encerra o passo de
-  followups (nada é decidido). Senão, por chamado:
+- `sincronizacao_followups`, por chamado:
   - **completo** (caminho atual, com `GET /tickets/{n}`): chamados em `mudancas`,
     os N da varredura de segurança, e os que divergem do panorama — GLPI aberto e
     fora de `abertos` no Tiflux; GLPI Solucionado e dentro de `abertos`.
@@ -34,11 +37,12 @@
 ## Files touched
 - `sync/tiflux_client.py`, `sync/limite_requisicoes_tiflux.py`, `sync/panorama_tiflux.py` (novo),
   `sync/mudancas_status_tiflux.py`, `sync/sincronizacao_followups.py`,
-  `sync/placar_followups.py`, `sync/db_followups.py`, `sync/config.py`.
+  `sync/placar_followups.py`, `sync/db_followups.py`, `sync/config.py`, `sync/main.py`.
 - `tests/fake_clients.py`, `tests/test_tiflux_client.py`, `tests/test_db_followups.py`,
   `tests/test_panorama_tiflux.py` (novo), `tests/test_mudancas_status_tiflux.py`,
   `tests/test_sincronizacao_followups.py`, `tests/test_limite_requisicoes_tiflux.py`,
-  `tests/test_placar_followups.py`.
+  `tests/test_placar_followups.py`, `tests/test_cascata_status.py`,
+  `tests/test_recusa_glpi_sem_reabrir_tiflux.py` (passam um panorama de teste).
 - `exemplo.env`, `docs/ARCHITECTURE.md`, `docs/data/audit_tables.toon`,
   `docs/decisions/LOG.md`, `docs/state/HANDOFF.md`.
 
@@ -54,7 +58,7 @@
 ## Tasks
 - [x] 1. `ListagemTifluxIncompleta`, `listar_tickets_abertos`, `listagens_com_falha` + fake e testes. Done: suíte verde.
 - [x] 2. Config (2 chaves + `exemplo.env`) e `db_followups`: checkpoint e marca de varredura completa + testes + `audit_tables.toon`. Done: verde.
-- [ ] 3. `panorama_tiflux.py` + `mudancas_status_tiflux` recebendo a listagem + testes (crit. 5). Done: verde.
+- [ ] 3. `panorama_tiflux.py` + `mudancas_status_tiflux` recebendo a listagem + `main` passa o panorama ao orquestrador + checkpoint + testes (crit. 5). Done: verde.
 - [ ] 4. Caminhos completo/leve em `sincronizacao_followups` + avanço do checkpoint + testes dos crit. 1–4, 6–8. Done: verde, crit. 1 medido no fake (≤ 5 chamadas).
 - [ ] 5. Contador de requisições na sessão + placar + testes. Done: verde.
 - [ ] 6. Rebuild do container; ARCHITECTURE, LOG, HANDOFF. Done: 3 execuções seguidas sem "⏳" com "Tiflux: ≤ 5 req"; resposta por e-mail no #364678 chega ao GLPI; encerrar #364678 no Tiflux encerra o GLPI #34900 em cascata.
