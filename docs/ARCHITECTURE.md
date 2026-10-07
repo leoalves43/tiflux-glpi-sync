@@ -30,8 +30,8 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
 2. **Followup sync, bidirectional, for already-synced open tickets.**
    `sincronizar_followups()` (sync/sincronizacao_followups.py) takes tickets whose
    Tiflux open/closed state changed in the last hour (`mudancas_status_tiflux.py`,
-   one `GET /tickets`) plus every `status='sucesso'` ticket open in GLPI (or
-   never scanned) and a rotating batch of 50 GLPI-closed ones (spec 003):
+   one `GET /tickets`) plus every `status='sucesso'` ticket open or Solucionado in
+   GLPI (or never scanned) and a rotating batch of 50 GLPI-Fechado ones (specs 003/004):
    - `sincronizar_followups_glpi_para_tiflux()` — GLPI `ITILFollowup` ->
      Tiflux `/client-answers`, always with the GLPI author's name (public only).
    - `sincronizar_followups_tiflux_para_glpi()` — Tiflux answers/internal
@@ -39,9 +39,8 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
    Cascade status sync is otherwise Tiflux -> GLPI only, with one exception:
    if a chamado this integration cascade-closed (GLPI Solucionado) comes back
    open in GLPI while Tiflux is still closed (solution refused, or reopened
-   manually), `_reabrir_tiflux_apos_recusa_glpi()` reopens the Tiflux ticket
-   (`TifluxClient.reabrir_ticket`) instead of re-closing GLPI. See
-   decisions/LOG.md 2026-09-16.
+   manually), `reabrir_tiflux_apos_recusa_glpi()` reopens the Tiflux ticket; if
+   that fails (403), GLPI stays open and it retries every run (spec 004).
 
 ## Modules
 
@@ -55,7 +54,9 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
 | `sync/html_texto.py` | `html_para_texto_plano()` — GLPI HTML description -> Tiflux plain text |
 | `sync/regras_negocio.py` | category->desk mapping, technician/priority lookup, requester-is-author check |
 | `sync/processamento_chamado.py` | `processar_chamado()` — creates one ticket end to end |
-| `sync/sincronizacao_followups.py` | the two directional sync functions + orchestrator |
+| `sync/sincronizacao_followups.py` | orchestrator: picks tickets, runs publish + cascade per ticket, `PlacarFollowups` log line |
+| `sync/publicacao_followups.py` | the two directional followup publishers (GLPI->Tiflux, Tiflux->GLPI) |
+| `sync/cascata_status.py` | cascade close/reopen GLPI<->Tiflux and Tiflux reopen after GLPI refusal |
 | `sync/mudancas_status_tiflux.py` | picks tickets recently closed/reopened in Tiflux so the cascade runs every cycle |
 | `sync/main.py` | `main()` — wiring, candidate selection, top-level logging |
 | `sync/forcar_sincronizacao.py` | `python -m sync.forcar_sincronizacao --id-glpi N` — manual backup for one ticket skipped by the cron; see below |
@@ -79,10 +80,8 @@ Full DDL and column reference: `docs/data/audit_tables.toon`. Summary:
   (`GET /Ticket/{id}/<SubItem>`), item creation via `{"input": {...}}` wrapper.
   No local spec — GLPI's own REST conventions, verified live during development.
 - Tiflux: bearer auth, documented in `openapi-spec-tiflux.json` (local file,
-  1.7MB — grep it, don't read it whole). Three header dicts exist for a reason:
-  `_headers_get` (GET only, no Content-Type — see comment in `TifluxClient.__init__`),
-  `_headers_json`, `_headers_form` (unused by followup code — followup
-  POSTs use `files={"field": (None, value)}` to force real multipart; see LOG.md).
+  1.7MB — grep it, don't read it whole). Three header dicts (`_cabecalhos_tiflux`):
+  GET never sends Content-Type; followup POSTs force multipart (see LOG.md).
 
 ## Manual force-sync entrypoint
 

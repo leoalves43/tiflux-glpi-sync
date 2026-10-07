@@ -25,11 +25,11 @@ def sincronizar_followups(
 ) -> None:
     """
     Percorre os chamados com encerramento/reabertura recente no Tiflux
-    (mudancas_status_tiflux) mais uma leva do rodízio de chamados já
-    sincronizados (obter_chamados_para_varrer_followups), ignora os que já
-    estão fechados no GLPI (fora do escopo desta varredura, mas marcados via
-    registrar_chamado_fechado_para_followups pra não travar o rodízio), e
-    sincroniza followups nos dois sentidos pros demais.
+    (mudancas_status_tiflux) mais os do rodízio (obter_chamados_para_varrer_followups:
+    todos os abertos/solucionados no GLPI + um lote de fechados). Fechados no
+    GLPI só passam pela cascata (cascata_status); os abertos sincronizam
+    followups nos dois sentidos (publicacao_followups) e depois a cascata.
+    Ex.: sincronizar_followups(conn, config, glpi, tiflux)
     """
     mudancas = obter_chamados_com_mudanca_de_status(conn, config, tiflux, agora_utc or datetime.now(timezone.utc))
     if mudancas:

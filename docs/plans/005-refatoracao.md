@@ -34,6 +34,6 @@ de `test_sincronizacao_followups.py`), `docs/ARCHITECTURE.md`,
       `main.main`/`_processar_chamados_pendentes`, `glpi_client`
       (`buscar_chamados_desde`, `_baixar_documento`), `tiflux_client`
       (`__init__`, `enviar_anexos`, `_paginar`). Done: verdes; script AST.
-- [ ] 6. Docstrings/docs desatualizados (rodízio, Solucionado na ARCHITECTURE,
+- [x] 6. Docstrings/docs desatualizados (rodízio, Solucionado na ARCHITECTURE,
       tabela de módulos). Done: ARCHITECTURE ≤ 100 linhas.
 - [ ] 7. Rebuild + 2 ciclos; LOG e HANDOFF. Done: log sem Traceback.
