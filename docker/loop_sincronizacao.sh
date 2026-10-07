@@ -6,7 +6,7 @@
 # uma execução em andamento: matar no meio pode postar um followup sem gravar
 # a auditoria, e ele seria repostado na execução seguinte. O sinal só marca a
 # parada; o loop sai quando a execução atual termina.
-INTERVALO="${INTERVALO_SEGUNDOS:-300}"
+INTERVALO="${INTERVALO_SEGUNDOS:-120}"
 PARAR=0
 trap 'PARAR=1' TERM INT
 

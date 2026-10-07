@@ -83,7 +83,7 @@ docker compose stop              # para, esperando a execução em andamento ter
 docker compose down              # para e remove o container
 ```
 
-O container roda a sincronização, espera `INTERVALO_SEGUNDOS` (padrão 300,
+O container roda a sincronização, espera `INTERVALO_SEGUNDOS` (padrão 120,
 no `docker-compose.yml`) e repete. Uma execução nunca começa antes da anterior
 terminar, e um `stop` espera até 10 minutos para a execução em andamento
 acabar. Depois de alterar o código, rode `up -d --build` de novo.

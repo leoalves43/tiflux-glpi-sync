@@ -3,7 +3,7 @@
 Package `sync/`, entrypoint `glpi_tiflux.py` (10-line shim calling `sync.main.main`
 — keep this filename; the scheduler invokes it directly). No framework. Scheduled
 by the Docker container `tiflux-glpi-sync` (`docker/loop_sincronizacao.sh`: run,
-then sleep 300s — never overlaps); manual: `python glpi_tiflux.py`. Env vars
+then sleep `INTERVALO_SEGUNDOS`, default 120s — never overlaps); manual: `python glpi_tiflux.py`. Env vars
 override `.env` keys (`Config.carregar`); DB is remote Postgres (`DB_HOST` in `.env`, no compose override). Split into modules 2026-09-08 (see
 decisions/LOG.md); each file stays under the 500-line guideline.
 
@@ -30,8 +30,8 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
 2. **Followup sync, bidirectional, for already-synced open tickets.**
    `sincronizar_followups()` (sync/sincronizacao_followups.py) takes tickets whose
    Tiflux open/closed state changed in the last hour (`mudancas_status_tiflux.py`,
-   one paginated `GET /tickets`) plus a rotating batch of `status='sucesso'`
-   tickets, skips closed ones, and calls:
+   one `GET /tickets`) plus every `status='sucesso'` ticket open in GLPI (or
+   never scanned) and a rotating batch of 50 GLPI-closed ones (spec 003):
    - `sincronizar_followups_glpi_para_tiflux()` — GLPI `ITILFollowup` ->
      Tiflux `/client-answers`, always with the GLPI author's name (public only).
    - `sincronizar_followups_tiflux_para_glpi()` — Tiflux answers/internal

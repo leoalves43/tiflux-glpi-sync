@@ -24,7 +24,23 @@ class TestObterChamadosParaVarrerFollowups(unittest.TestCase):
         conn = FakeConnection(respostas=[[]])
         db_followups.obter_chamados_para_varrer_followups(conn, _CONFIG)
         _, params = conn.execucoes[0]
-        self.assertEqual(params, (_CONFIG.tamanho_pagina_followups,))
+        self.assertEqual(params, (_CONFIG.tamanho_lote_fechados_followups,))
+
+    def test_abertos_sem_limite_e_so_fechados_limitados(self):
+        # Spec 003: o único LIMIT da query é o do lote de fechados.
+        conn = FakeConnection(respostas=[[]])
+        db_followups.obter_chamados_para_varrer_followups(conn, _CONFIG)
+        sql = " ".join(conn.execucoes[0][0].split())
+        self.assertEqual(sql.count("LIMIT"), 1)
+        self.assertIn("WHERE fechado ORDER BY ultima_varredura ASC NULLS FIRST LIMIT %s", sql)
+        self.assertIn("WHERE NOT fechado", sql)
+
+    def test_abertos_vem_antes_dos_fechados(self):
+        conn = FakeConnection(respostas=[[]])
+        db_followups.obter_chamados_para_varrer_followups(conn, _CONFIG)
+        sql = " ".join(conn.execucoes[0][0].split())
+        self.assertIn("ORDER BY grupo, ultima_varredura ASC NULLS FIRST", sql)
+        self.assertIn("COALESCE(v.status = 'fechado', FALSE) AS fechado", sql)
 
 
 class TestObterChamadosPorNumeroTiflux(unittest.TestCase):

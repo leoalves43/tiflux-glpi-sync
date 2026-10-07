@@ -5,33 +5,53 @@ from sync.config import Config
 
 def obter_chamados_para_varrer_followups(conn, config: Config) -> list[tuple[int, int]]:
     """
-    Retorna até `limite` pares (id_glpi, numero_tiflux) de chamados já
-    sincronizados com sucesso, para varrer em busca de followups novos.
-    Só considera chamados com status='sucesso' na tabela de auditoria de
-    chamados — linhas 'erro' podem ter numero_tiflux inconsistente (ver bug
-    conhecido de duplicação no reprocessamento de falha de atribuição de
-    técnico, em processar_chamado()).
-    Prioriza os chamados menos recentemente varridos (LEFT JOIN pelo timestamp
-    mais recente na tabela de followups), pra fazer um rodízio justo entre
-    execuções do cron.
+    Pares (id_glpi, numero_tiflux) de chamados status='sucesso' a varrer
+    nesta execução: TODOS os abertos no GLPI ou nunca varridos, depois até
+    `tamanho_lote_fechados_followups` fechados. Antes era um lote único de 50
+    dividido entre abertos e fechados — com 176 fechados, um chamado aberto
+    esperava ~4 execuções (Tiflux #364569: 16 min; spec 003). Os fechados
+    seguem revisitados pra detectar recusa da solução no GLPI.
+    Aberto/fechado vem da marca de varredura (direcao='verificacao_status');
+    dentro de cada grupo, varredura mais antiga primeiro (rodízio justo).
+    Só status='sucesso': linhas 'erro' podem ter numero_tiflux inconsistente
+    (bug conhecido de duplicação em processar_chamado()).
+    Ex.: obter_chamados_para_varrer_followups(conn, config) -> [(34865, 364569), ...]
     """
-    tabela_auditoria = config.tabela_auditoria
-    tabela_followups = config.tabela_followups
     with conn.cursor() as cur:
         cur.execute(
             f"""
-            SELECT t.id_glpi, t.numero_tiflux
-            FROM {tabela_auditoria} t
-            LEFT JOIN (
-                SELECT id_glpi, MAX(atualizado_em) AS ultima_varredura
-                FROM {tabela_followups}
-                GROUP BY id_glpi
-            ) f ON f.id_glpi = t.id_glpi
-            WHERE t.status = 'sucesso'
-            ORDER BY f.ultima_varredura ASC NULLS FIRST
-            LIMIT %s
+            WITH chamados AS (
+                SELECT t.id_glpi, t.numero_tiflux,
+                       COALESCE(v.status = 'fechado', FALSE) AS fechado,
+                       f.ultima_varredura
+                FROM {config.tabela_auditoria} t
+                LEFT JOIN (
+                    SELECT id_glpi, MAX(atualizado_em) AS ultima_varredura
+                    FROM {config.tabela_followups}
+                    GROUP BY id_glpi
+                ) f ON f.id_glpi = t.id_glpi
+                LEFT JOIN {config.tabela_followups} v
+                  ON v.direcao = 'verificacao_status' AND v.id_origem = -t.id_glpi
+                WHERE t.status = 'sucesso'
+            ),
+            abertos AS (
+                SELECT id_glpi, numero_tiflux, ultima_varredura FROM chamados
+                WHERE NOT fechado
+            ),
+            fechados AS (
+                SELECT id_glpi, numero_tiflux, ultima_varredura FROM chamados
+                WHERE fechado
+                ORDER BY ultima_varredura ASC NULLS FIRST
+                LIMIT %s
+            )
+            SELECT id_glpi, numero_tiflux FROM (
+                SELECT *, 0 AS grupo FROM abertos
+                UNION ALL
+                SELECT *, 1 AS grupo FROM fechados
+            ) selecionados
+            ORDER BY grupo, ultima_varredura ASC NULLS FIRST
             """,
-            (config.tamanho_pagina_followups,),
+            (config.tamanho_lote_fechados_followups,),
         )
         return cur.fetchall()
 

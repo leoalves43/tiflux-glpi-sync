@@ -68,8 +68,9 @@ class Config:
     # há trechos longos de 'ignorado' (fora do grupo observador) no meio.
     quantidade_registros_para_recuo: int = 10
 
-    # Quantos chamados já sincronizados varrer por execução em busca de followups novos
-    tamanho_pagina_followups: int = 50
+    # Abertos no GLPI são varridos todos, em toda execução (spec 003); este
+    # limite vale só pros fechados, revisitados pra detectar recusa da solução.
+    tamanho_lote_fechados_followups: int = 50
 
     # Encerramentos/reaberturas no Tiflux atualizados nesta janela são
     # espelhados no GLPI na execução seguinte, fora do rodízio de followups.

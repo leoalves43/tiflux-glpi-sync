@@ -38,13 +38,13 @@ o que limita). Loop: padrão 300 -> 120 s.
   só leitura).
 
 ## Tasks
-- [ ] 1. Rename do config + nova seleção + testes (sem LIMIT nos abertos,
+- [x] 1. Rename do config + nova seleção + testes (sem LIMIT nos abertos,
       LIMIT do lote de fechados como parâmetro, retorno inalterado).
       Done: `python -m unittest` verde.
-- [ ] 2. Verificação só leitura no container: rodar a função contra o banco e
+- [x] 2. Verificação só leitura no container: rodar a função contra o banco e
       conferir que vêm todos os `aberto`/sem linha (contagem igual à do banco),
       depois no máximo 50 `fechado`. Done: saída confere (critérios 1–5).
-- [ ] 3. Intervalo 300 -> 120 em `loop_sincronizacao.sh` e `docker-compose.yml`;
+- [x] 3. Intervalo 300 -> 120 em `loop_sincronizacao.sh` e `docker-compose.yml`;
       README/ARCHITECTURE. Done: `grep -rn 300` sem menção ao intervalo antigo.
 - [ ] 4. `docker compose up -d --build`; acompanhar 2 ciclos no log
       (intervalo ~2 min, sem erros). Done: log confere.
