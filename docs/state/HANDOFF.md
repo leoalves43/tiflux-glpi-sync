@@ -1,20 +1,20 @@
 # Handoff
 
 DONE (2026-10-07), local container rebuilt, 324 tests green (3.14 + 3.13):
-- Specs 003-005: open+Solucionado GLPI tickets scanned every run (loop 120 s);
-  failed Tiflux reopen keeps GLPI open and retries; no-behavior refactor.
-- Spec 006: reopened Tiflux ticket gets its previous responsible back.
-- Spec 007: Tiflux calls honor RateLimit headers and retry 429.
+- Specs 003-007 shipped (see decisions/LOG.md 2026-10-07).
+- Rate-limit study: a run scans 98 tickets (27 aberto + 21 solucionado + 50 fechado),
+  ~1 GET /tickets/{n} each + /answers for the 48 open ≈ 145 Tiflux calls -> every run
+  hits the reserve even with 0 followups. Tiflux had only 12 tickets updated in 8 h, 30 open.
 
 NEXT:
-1. Next GLPI refusal: Tiflux reopens + keeps técnico ("atribuído de novo" = it didn't).
-2. "⏳ Limite" lines are normal (a run uses ~120+ req/min); repeated 429
-   failures are not. Restart the container between runs, not during one.
-3. VPS deploy PAUSED by user (2026-10-07) — don't bring it up until asked.
-4. Refactor 005 in prod: Tiflux->GLPI followup write OK (14:41); ticket create
-   + cascade write still unconfirmed.
+1. AWAITING USER DECISION on proposal 008 (change-driven Tiflux side: 1 `filter_by=open`
+   listing + existing `update_start_datetime` listing; `/answers` only for updated tickets;
+   per-ticket GET only on transitions; small safety sweep). Then write spec 008.
+2. VPS deploy PAUSED by user — don't bring it up until asked.
+3. Refactor 005 in prod: ticket create + cascade write still unconfirmed.
 
 RISKS:
-- 120 s loop ≈ 2.5x GLPI requests (`INTERVALO_SEGUNDOS=300` reverts); VPS resume = GLPI 302 + duplicates.
+- 008: failed listing returns [] today — must not be read as "all closed".
+- `updated_at` bump on answer verified on 4 tickets only (not e-mail/portal answers).
 
-CONTEXT: specs/003-007, decisions/LOG.md 2026-10-07.
+CONTEXT: specs/007, decisions/LOG.md 2026-10-07, sync/sincronizacao_followups.py.
