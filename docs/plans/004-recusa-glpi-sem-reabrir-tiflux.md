@@ -22,7 +22,7 @@ varredura de chamado aberto com Tiflux aberto: equaliza cascata
 - Critério 7 adiciona um SELECT por chamado aberto com Tiflux aberto.
 
 ## Tasks
-- [ ] 1. Falha na reabertura não encerra o GLPI, linha própria, log (crit. 1–6)
+- [x] 1. Falha na reabertura não encerra o GLPI, linha própria, log (crit. 1–6)
       + testes. Done: `python -m unittest` verde.
-- [ ] 2. Equalização após reabertura manual (crit. 7) + teste. Done: verde.
+- [x] 2. Equalização após reabertura manual (crit. 7) + teste. Done: verde.
 - [ ] 3. Rebuild do container; docs (toon, LOG, HANDOFF). Done: log sem erro.

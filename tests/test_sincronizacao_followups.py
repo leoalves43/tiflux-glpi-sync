@@ -245,8 +245,8 @@ class TestSincronizarFollowups(unittest.TestCase):
         tiflux.ticket_tiflux = {"is_closed": False, "desk": {"id": 37964}}
         conn = FakeConnection(respostas=[[(1, "T-1")], [], []])
         sincronizar_followups(conn, _CONFIG, glpi, tiflux)
-        _, params = conn.execucoes[-1]
-        self.assertEqual(params[2:7], ("verificacao_status", "status", -1, None, "aberto"))
+        marcas = [p[2:7] for _, p in conn.execucoes if p and len(p) >= 7]
+        self.assertIn(("verificacao_status", "status", -1, None, "aberto"), marcas)
 
     def test_chamado_sem_numero_tiflux_e_ignorado(self):
         glpi = FakeGlpiClient()
