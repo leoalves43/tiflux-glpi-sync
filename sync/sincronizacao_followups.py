@@ -3,6 +3,7 @@
 from sync import db_followups
 from sync.cascata_status import (
     STATUS_GLPI_ABERTOS,
+    STATUS_GLPI_SOLUCIONADO,
     encerrar_em_cascata,
     equalizar_reabertura_manual_do_tiflux,
     id_responsavel_tiflux,
@@ -34,27 +35,33 @@ def sincronizar_followups(
     mudancas = list(panorama.mudancas)
     if mudancas:
         log(f"🔁 {len(mudancas)} chamado(s) com encerramento/reabertura recente no Tiflux: {[m[0] for m in mudancas]}")
-    chamados = _juntar_sem_repetir(mudancas, db_followups.obter_chamados_para_varrer_followups(conn, config))
+    prioritarios = mudancas + list(panorama.varredura_completa)
+    chamados = _juntar_sem_repetir(prioritarios, db_followups.obter_chamados_para_varrer_followups(conn, config))
     if not chamados:
         return
 
     placar = PlacarFollowups()
     for id_glpi, numero_tiflux in chamados:
         if numero_tiflux:
-            _sincronizar_chamado(conn, config, glpi, tiflux, id_glpi, numero_tiflux, placar)
+            _sincronizar_chamado(conn, config, glpi, tiflux, id_glpi, numero_tiflux, placar, panorama)
 
     log(placar.resumo())
 
 
 def _juntar_sem_repetir(primeiros: list[tuple[int, int]], demais: list[tuple[int, int]]) -> list[tuple[int, int]]:
-    # Um chamado nas duas listas rodaria duas vezes na mesma execução.
-    ja_incluidos = {id_glpi for id_glpi, _ in primeiros}
-    return primeiros + [par for par in demais if par[0] not in ja_incluidos]
+    # Um chamado em mais de uma lista rodaria duas vezes na mesma execução.
+    ja_incluidos: set[int] = set()
+    juntos = []
+    for par in primeiros + demais:
+        if par[0] not in ja_incluidos:
+            ja_incluidos.add(par[0])
+            juntos.append(par)
+    return juntos
 
 
 def _sincronizar_chamado(
     conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
-    numero_tiflux: NumeroTiflux, placar: PlacarFollowups,
+    numero_tiflux: NumeroTiflux, placar: PlacarFollowups, panorama: PanoramaTiflux,
 ) -> None:
     ticket_glpi, status_code = glpi.obter_ticket(id_glpi)
     if ticket_glpi is None:
@@ -62,6 +69,62 @@ def _sincronizar_chamado(
             f"(status {status_code}) — pulado nesta execução")
         return
 
+    if not conferir_por_completo(id_glpi, numero_tiflux, ticket_glpi, panorama):
+        _sincronizar_chamado_pelo_panorama(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_glpi, placar, panorama)
+        return
+    _sincronizar_chamado_completo(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_glpi, placar)
+    if id_glpi in _ids_glpi(panorama.varredura_completa):
+        db_followups.registrar_varredura_completa(conn, config, id_glpi, numero_tiflux)
+
+
+def conferir_por_completo(
+    id_glpi: int, numero_tiflux: NumeroTiflux, ticket_glpi: dict, panorama: PanoramaTiflux,
+) -> bool:
+    """
+    True quando o chamado precisa da leitura individual no Tiflux (spec 008):
+    mudança de status recente, varredura de segurança, ou GLPI e lista de
+    abertos do Tiflux em desacordo — aberto no GLPI e fora da lista (fechado,
+    cancelado ou recusa pendente) ou Solucionado no GLPI e aberto no Tiflux
+    (reabertura). Nenhuma escrita sai do panorama sem essa leitura (crit. 6).
+    Ex.: conferir_por_completo(34759, 364160, {"status": 2}, panorama_sem_o_364160) -> True
+    """
+    if id_glpi in _ids_glpi(panorama.mudancas) or id_glpi in _ids_glpi(panorama.varredura_completa):
+        return True
+    status = ticket_glpi.get("status")
+    if status in STATUS_GLPI_ABERTOS:
+        return numero_tiflux not in panorama.abertos
+    return status == STATUS_GLPI_SOLUCIONADO and numero_tiflux in panorama.abertos
+
+
+def _ids_glpi(pares: tuple[tuple[int, NumeroTiflux], ...]) -> set[int]:
+    return {id_glpi for id_glpi, _ in pares}
+
+
+def _sincronizar_chamado_pelo_panorama(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
+    numero_tiflux: NumeroTiflux, ticket_glpi: dict, placar: PlacarFollowups, panorama: PanoramaTiflux,
+) -> None:
+    """
+    Mesmo efeito do caminho completo quando GLPI e Tiflux concordam, sem o
+    GET individual: fechado nos dois só ganha a marca de varredura; aberto nos
+    dois sincroniza followups — os do Tiflux só se o ticket foi atualizado
+    desde o checkpoint (uma resposta nova muda o updated_at).
+    """
+    status = ticket_glpi.get("status")
+    if status not in STATUS_GLPI_ABERTOS:
+        db_followups.registrar_chamado_fechado_para_followups(conn, config, id_glpi, status == STATUS_GLPI_SOLUCIONADO)
+        return
+    placar.somar_glpi_para_tiflux(*sincronizar_followups_glpi_para_tiflux(conn, config, glpi, tiflux, id_glpi, numero_tiflux))
+    if numero_tiflux in panorama.atualizados:
+        placar.somar_tiflux_para_glpi(*sincronizar_followups_tiflux_para_glpi(conn, config, glpi, tiflux, id_glpi, numero_tiflux))
+    db_followups.registrar_chamado_aberto_varrido(conn, config, id_glpi, numero_tiflux)
+    equalizar_reabertura_manual_do_tiflux(conn, config, id_glpi, numero_tiflux)
+
+
+def _sincronizar_chamado_completo(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
+    numero_tiflux: NumeroTiflux, ticket_glpi: dict, placar: PlacarFollowups,
+) -> None:
     ticket_tiflux, _ = tiflux.obter_ticket(numero_tiflux)
 
     if ticket_glpi.get("status") not in STATUS_GLPI_ABERTOS:

@@ -142,6 +142,8 @@ class TestPreparacaoEncerramentoCascata(unittest.TestCase):
 
 
 class TestReaberturaEmCascata(unittest.TestCase):
+    # Spec 008: o ticket reaberto no Tiflux aparece na lista de abertos do
+    # panorama, o que leva o chamado Solucionado à leitura individual.
     def setUp(self):
         self.glpi = FakeGlpiClient()
         self.tiflux = FakeTifluxClient()
@@ -150,7 +152,7 @@ class TestReaberturaEmCascata(unittest.TestCase):
     def test_reaberto_no_tiflux_reabre_no_glpi_como_processando(self):
         self.tiflux.ticket_tiflux = {"is_closed": False, "desk": {"id": 37964}}
         conn = FakeConnection(respostas=[[(1, "T-1")]])
-        sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste())
+        sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste(abertos=("T-1",)))
         self.assertEqual(self.glpi.chamados_encerrados, [(1, 2)])
         sql, params = conn.execucoes[-1]
         self.assertIn("reabertura", params)
@@ -167,7 +169,7 @@ class TestReaberturaEmCascata(unittest.TestCase):
     def test_falha_ao_consultar_tiflux_nao_reabre_no_glpi(self):
         self.tiflux.ticket_tiflux = None  # falha ao consultar o ticket no Tiflux
         conn = FakeConnection(respostas=[[(1, "T-1")]])
-        sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste())
+        sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste(abertos=("T-1",)))
         self.assertEqual(self.glpi.chamados_encerrados, [])
 
     def test_status_glpi_fechado_manualmente_nunca_e_reaberto(self):
@@ -177,7 +179,7 @@ class TestReaberturaEmCascata(unittest.TestCase):
         self.glpi.tickets[1] = {"status": 6}
         self.tiflux.ticket_tiflux = {"is_closed": False, "desk": {"id": 37964}}
         conn = FakeConnection(respostas=[[(1, "T-1")]])
-        sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste())
+        sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste(abertos=("T-1",)))
         self.assertEqual(self.glpi.chamados_encerrados, [])
 
 

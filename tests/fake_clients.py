@@ -198,6 +198,28 @@ class FakeTifluxClient:
         return sucesso, erro
 
 
+
+class FakeTifluxClientContador(FakeTifluxClient):
+    """
+    FakeTifluxClient que registra em `requisicoes` o nome de cada método que,
+    no cliente real, faz requisição HTTP (spec 008, critério 1).
+    """
+
+    _METODOS_HTTP = frozenset({
+        "obter_ticket", "listar_tickets_atualizados_desde", "listar_tickets_abertos", "listar_respostas",
+        "listar_comunicacoes_internas", "publicar_resposta_cliente", "publicar_comunicacao_interna",
+        "reabrir_ticket", "atribuir_tecnico", "enviar_anexos",
+    })
+
+    def __init__(self):
+        super().__init__()
+        self.requisicoes: list[str] = []
+
+    def __getattribute__(self, nome):
+        if nome in type(self)._METODOS_HTTP:
+            object.__getattribute__(self, "requisicoes").append(nome)
+        return object.__getattribute__(self, nome)
+
 class _FakeHttpResponse:
     def __init__(self, status_code, json_data, text: str = ""):
         self.status_code = status_code

@@ -60,6 +60,6 @@
 - [x] 1. `ListagemTifluxIncompleta`, `listar_tickets_abertos`, `listagens_com_falha` + fake e testes. Done: suíte verde.
 - [x] 2. Config (2 chaves + `exemplo.env`) e `db_followups`: checkpoint e marca de varredura completa + testes + `audit_tables.toon`. Done: verde.
 - [x] 3. `panorama_tiflux.py` + `mudancas_status_tiflux` recebendo a listagem + `main` passa o panorama ao orquestrador + checkpoint + testes (crit. 5). Done: verde.
-- [ ] 4. Caminhos completo/leve em `sincronizacao_followups` + avanço do checkpoint + testes dos crit. 1–4, 6–8. Done: verde, crit. 1 medido no fake (≤ 5 chamadas).
+- [x] 4. Caminhos completo/leve em `sincronizacao_followups` + avanço do checkpoint + testes dos crit. 1–4, 6–8. Done: verde, crit. 1 medido no fake (≤ 5 chamadas).
 - [ ] 5. Contador de requisições na sessão + placar + testes. Done: verde.
 - [ ] 6. Rebuild do container; ARCHITECTURE, LOG, HANDOFF. Done: 3 execuções seguidas sem "⏳" com "Tiflux: ≤ 5 req"; resposta por e-mail no #364678 chega ao GLPI; encerrar #364678 no Tiflux encerra o GLPI #34900 em cascata.
