@@ -118,6 +118,11 @@ class FakeTifluxClient:
         self.tecnicos_atribuidos: list[tuple[str, int]] = []
         self.tickets_atualizados: list[dict] = []
         self.inicios_listagem_atualizados: list = []
+        self.tickets_abertos: list[dict] = []
+        # Exceção levantada pela listagem correspondente (spec 008), ou None.
+        self.falha_listagem_atualizados: Exception | None = None
+        self.falha_listagem_abertos: Exception | None = None
+        self.listagens_com_falha = 0
 
     def validar_mesa_do_cliente(self, id_mesa):
         return True if self.mesas_validas is None else id_mesa in self.mesas_validas
@@ -145,7 +150,14 @@ class FakeTifluxClient:
 
     def listar_tickets_atualizados_desde(self, inicio_utc, tamanho_pagina, max_paginas):
         self.inicios_listagem_atualizados.append(inicio_utc)
+        if self.falha_listagem_atualizados:
+            raise self.falha_listagem_atualizados
         return self.tickets_atualizados
+
+    def listar_tickets_abertos(self, tamanho_pagina, max_paginas):
+        if self.falha_listagem_abertos:
+            raise self.falha_listagem_abertos
+        return self.tickets_abertos
 
     def listar_respostas(self, ticket_number, tamanho_pagina, max_paginas):
         return self.respostas

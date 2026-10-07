@@ -52,7 +52,7 @@
   casa com `api_glpi_tiflux`). Nada irreversível.
 
 ## Tasks
-- [ ] 1. `ListagemTifluxIncompleta`, `listar_tickets_abertos`, `listagens_com_falha` + fake e testes. Done: suíte verde.
+- [x] 1. `ListagemTifluxIncompleta`, `listar_tickets_abertos`, `listagens_com_falha` + fake e testes. Done: suíte verde.
 - [ ] 2. Config (2 chaves + `exemplo.env`) e `db_followups`: checkpoint e marca de varredura completa + testes + `audit_tables.toon`. Done: verde.
 - [ ] 3. `panorama_tiflux.py` + `mudancas_status_tiflux` recebendo a listagem + testes (crit. 5). Done: verde.
 - [ ] 4. Caminhos completo/leve em `sincronizacao_followups` + avanço do checkpoint + testes dos crit. 1–4, 6–8. Done: verde, crit. 1 medido no fake (≤ 5 chamadas).

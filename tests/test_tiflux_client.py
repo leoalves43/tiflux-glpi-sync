@@ -8,7 +8,7 @@ import requests
 
 from sync.config import Config
 from sync.limite_requisicoes_tiflux import SessaoTifluxLimitada
-from sync.tiflux_client import TifluxClient
+from sync.tiflux_client import ListagemTifluxIncompleta, TifluxClient
 from tests.fakes import FakeRequests, FakeResponse
 
 URL_BASE = "https://api.tiflux.com/api/v2"
@@ -366,8 +366,27 @@ class TestListarPaginado(unittest.TestCase):
         fake.programar("GET", "/internal_communications", FakeResponse(200, [{"id": 1}]))
         fake.programar("GET", "/internal_communications", FakeResponse(500, text="erro"))
         with patch("sync.tiflux_client.requests", fake), _sem_console():
-            itens = _client().listar_comunicacoes_internas("T-1", tamanho_pagina=1, max_paginas=20)
+            client = _client()
+            itens = client.listar_comunicacoes_internas("T-1", tamanho_pagina=1, max_paginas=20)
         self.assertEqual(itens, [{"id": 1}])
+        self.assertEqual(client.listagens_com_falha, 1)
+
+    def test_listagem_inteira_nao_conta_falha(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/answers", FakeResponse(200, []))
+        with patch("sync.tiflux_client.requests", fake):
+            client = _client()
+            client.listar_respostas("T-1", tamanho_pagina=5, max_paginas=20)
+        self.assertEqual(client.listagens_com_falha, 0)
+
+    def test_teto_de_paginas_com_pagina_cheia_conta_falha(self):
+        fake = FakeRequests()
+        for _ in range(2):
+            fake.programar("GET", "/answers", FakeResponse(200, [{"id": 1}]))
+        with patch("sync.tiflux_client.requests", fake), _sem_console():
+            client = _client()
+            itens = client.listar_respostas("T-1", tamanho_pagina=1, max_paginas=2)
+        self.assertEqual((len(itens), client.listagens_com_falha), (2, 1))
 
 
 class _FakeRequestsSemRede(FakeRequests):
@@ -399,10 +418,53 @@ class TestListarTicketsAtualizadosDesde(unittest.TestCase):
         self.assertEqual([i["ticket_number"] for i in itens], [1, 2, 3])
         self.assertEqual([c[2]["params"]["offset"] for c in fake.chamadas], [1, 2])
 
-    def test_falha_de_rede_retorna_lista_vazia(self):
-        with patch("sync.tiflux_client.requests", _FakeRequestsSemRede()), _sem_console():
-            itens = _client().listar_tickets_atualizados_desde(self._INICIO, tamanho_pagina=200, max_paginas=10)
-        self.assertEqual(itens, [])
+    def test_falha_de_rede_levanta_listagem_incompleta(self):
+        with patch("sync.tiflux_client.requests", _FakeRequestsSemRede()):
+            with self.assertRaises(ListagemTifluxIncompleta):
+                _client().listar_tickets_atualizados_desde(self._INICIO, tamanho_pagina=200, max_paginas=10)
+
+    def test_falha_http_levanta_com_status_e_itens_parciais(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/tickets", FakeResponse(200, [{"ticket_number": 1}]))
+        fake.programar("GET", "/tickets", FakeResponse(429, text="limite"))
+        with patch("sync.tiflux_client.requests", fake):
+            with self.assertRaises(ListagemTifluxIncompleta) as ctx:
+                _client().listar_tickets_atualizados_desde(self._INICIO, tamanho_pagina=1, max_paginas=10)
+        self.assertIn("429", str(ctx.exception))
+        self.assertEqual(ctx.exception.itens_parciais, [{"ticket_number": 1}])
+
+    def test_teto_de_paginas_com_pagina_cheia_levanta(self):
+        fake = FakeRequests()
+        for _ in range(2):
+            fake.programar("GET", "/tickets", FakeResponse(200, [{"ticket_number": 1}]))
+        with patch("sync.tiflux_client.requests", fake):
+            with self.assertRaises(ListagemTifluxIncompleta):
+                _client().listar_tickets_atualizados_desde(self._INICIO, tamanho_pagina=1, max_paginas=2)
+
+    def test_corpo_que_nao_e_lista_levanta(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/tickets", FakeResponse(200, {"erro": "x"}))
+        with patch("sync.tiflux_client.requests", fake):
+            with self.assertRaises(ListagemTifluxIncompleta):
+                _client().listar_tickets_atualizados_desde(self._INICIO, tamanho_pagina=200, max_paginas=10)
+
+
+class TestListarTicketsAbertos(unittest.TestCase):
+    def test_filtra_abertos_do_cliente(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/tickets", FakeResponse(200, [{"ticket_number": 7}]))
+        with patch("sync.tiflux_client.requests", fake):
+            itens = _client().listar_tickets_abertos(tamanho_pagina=200, max_paginas=10)
+        self.assertEqual(itens, [{"ticket_number": 7}])
+        params = fake.chamadas[0][2]["params"]
+        self.assertEqual((params["filter_by"], params["client_ids"], params["limit"]), ("open", "762707", 200))
+
+    def test_falha_http_levanta(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/tickets", FakeResponse(500, text="erro"))
+        with patch("sync.tiflux_client.requests", fake):
+            with self.assertRaises(ListagemTifluxIncompleta):
+                _client().listar_tickets_abertos(tamanho_pagina=200, max_paginas=10)
 
 
 if __name__ == "__main__":

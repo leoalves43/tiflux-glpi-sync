@@ -41,6 +41,19 @@ def _cabecalhos_tiflux(token: str) -> tuple[dict[str, str], dict[str, str], dict
     return json_, form, get
 
 
+class ListagemTifluxIncompleta(Exception):
+    """
+    Listagem paginada que não veio inteira (HTTP != 200, corpo que não é lista,
+    falha de rede ou teto de páginas atingido). Distinta de lista vazia: quem
+    decide algo a partir de uma listagem não pode ler falha como "nenhum
+    ticket" (spec 008). `itens_parciais` guarda o que chegou antes da falha.
+    """
+
+    def __init__(self, mensagem: str, itens_parciais: list[dict]) -> None:
+        super().__init__(mensagem)
+        self.itens_parciais = itens_parciais
+
+
 class TifluxClient:
     """Wraps chamadas à API do Tiflux. Uma instância por execução do cron."""
 
@@ -58,6 +71,9 @@ class TifluxClient:
         # nova a cada request. Ver docs/decisions/LOG.md.
         self._session = session if session is not None else requests.Session()
         self._headers_json, self._headers_form, self._headers_get = _cabecalhos_tiflux(token)
+        # Listagens de respostas/comunicações que falharam nesta execução: o
+        # checkpoint do panorama (spec 008) só avança se for zero.
+        self.listagens_com_falha = 0
 
     @property
     def cliente_id(self) -> int:
@@ -356,10 +372,9 @@ class TifluxClient:
     ) -> list[dict]:
         """
         Tickets do cliente (abertos e fechados) atualizados no Tiflux a partir de
-        `inicio_utc` — uma consulta paginada em vez de um GET por ticket. Usado
-        pra pegar encerramentos/reaberturas recentes sem esperar o rodízio de
-        followups (ver sincronizacao_followups.sincronizar_followups).
-        Falha de rede vira lista vazia: o rodízio normal continua cobrindo.
+        `inicio_utc` — uma consulta paginada em vez de um GET por ticket. Uma
+        resposta nova muda o `updated_at` do ticket (web e e-mail, testado em
+        07/10 no #364678). Levanta ListagemTifluxIncompleta se não vier inteira.
         Ex.: tiflux.listar_tickets_atualizados_desde(datetime.now(timezone.utc) - timedelta(hours=1), 200, 10)
         """
         params = {
@@ -367,18 +382,27 @@ class TifluxClient:
             "client_ids": str(self._cliente_id),
             "update_start_datetime": inicio_utc.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
-        try:
-            return self._paginar(f"{self._url_base}/tickets", params, tamanho_pagina, max_paginas, "tickets atualizados")
-        # Importada à parte: os testes trocam o módulo `requests` inteiro por um fake.
-        except RequestException as e:
-            log(f"⚠️ Falha ao listar tickets atualizados no Tiflux desde {params['update_start_datetime']}: {e}")
-            return []
+        return self._paginar(f"{self._url_base}/tickets", params, tamanho_pagina, max_paginas, "tickets atualizados")
+
+    def listar_tickets_abertos(self, tamanho_pagina: int, max_paginas: int) -> list[dict]:
+        """
+        Tickets do cliente abertos no Tiflux (`filter_by=open`; cancelados e
+        fechados ficam de fora). Levanta ListagemTifluxIncompleta se não vier inteira.
+        Ex.: {t["ticket_number"] for t in tiflux.listar_tickets_abertos(200, 10)}
+        """
+        params = {"filter_by": "open", "client_ids": str(self._cliente_id)}
+        return self._paginar(f"{self._url_base}/tickets", params, tamanho_pagina, max_paginas, "tickets abertos")
 
     def _listar_paginado(
         self, endpoint: str, ticket_number: NumeroTiflux, tamanho_pagina: int, max_paginas: int,
     ) -> list[dict]:
         url = f"{self._url_base}/tickets/{ticket_number}/{endpoint}"
-        return self._paginar(url, {}, tamanho_pagina, max_paginas, f"{endpoint} do ticket Tiflux #{ticket_number}")
+        try:
+            return self._paginar(url, {}, tamanho_pagina, max_paginas, f"{endpoint} do ticket Tiflux #{ticket_number}")
+        except ListagemTifluxIncompleta as e:
+            log(f"⚠️ {e}")
+            self.listagens_com_falha += 1
+            return e.itens_parciais
 
     def _paginar(
         self, url: str, params: dict[str, str], tamanho_pagina: int, max_paginas: int, descricao: str,
@@ -386,22 +410,39 @@ class TifluxClient:
         """
         Pagina um endpoint de listagem do Tiflux (offset = número da página, não
         deslocamento de linha — ver doc da API) e retorna todos os itens.
+        Levanta ListagemTifluxIncompleta se uma página falhar ou o teto de
+        páginas chegar com a última página ainda cheia.
         """
         itens: list[dict] = []
         for pagina in range(1, max_paginas + 1):
-            pagina_itens = self._obter_pagina(url, {**params, "offset": pagina, "limit": tamanho_pagina}, descricao)
-            if not pagina_itens:
-                break
+            pagina_itens = self._obter_pagina(url, {**params, "offset": pagina, "limit": tamanho_pagina}, descricao, itens)
             itens.extend(pagina_itens)
             if len(pagina_itens) < tamanho_pagina:
-                break
-        return itens
+                return itens
+        raise ListagemTifluxIncompleta(
+            f"Listagem de {descricao} cortada: {max_paginas} páginas de {tamanho_pagina} cheias "
+            f"— aumente o teto de páginas", itens,
+        )
 
-    def _obter_pagina(self, url: str, params: dict[str, str | int], descricao: str) -> list[dict]:
-        """Itens de uma página; lista vazia (fim da paginação) em falha HTTP ou corpo que não é lista."""
-        resp = self._session.get(url, params=params, headers=self._headers_get, timeout=self._timeout)
+    def _obter_pagina(
+        self, url: str, params: dict[str, str | int], descricao: str, itens_anteriores: list[dict],
+    ) -> list[dict]:
+        """Itens de uma página; ListagemTifluxIncompleta em falha de rede/HTTP ou corpo que não é lista."""
+        try:
+            resp = self._session.get(url, params=params, headers=self._headers_get, timeout=self._timeout)
+        # Importada à parte: os testes trocam o módulo `requests` inteiro por um fake.
+        except RequestException as e:
+            raise ListagemTifluxIncompleta(
+                f"Falha de rede ao listar {descricao} (página {params['offset']}): {e}", itens_anteriores,
+            ) from e
         if resp.status_code != 200:
-            log(f"⚠️ Falha ao listar {descricao} (status {resp.status_code}): {resp.text}")
-            return []
+            raise ListagemTifluxIncompleta(
+                f"Falha ao listar {descricao} (status {resp.status_code}, esperado 200): {resp.text}", itens_anteriores,
+            )
         pagina_itens = resp.json()
-        return pagina_itens if isinstance(pagina_itens, list) else []
+        if not isinstance(pagina_itens, list):
+            raise ListagemTifluxIncompleta(
+                f"Listagem de {descricao} devolveu {type(pagina_itens).__name__}, esperado lista: {resp.text[:200]}",
+                itens_anteriores,
+            )
+        return pagina_itens

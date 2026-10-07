@@ -10,8 +10,8 @@ já na execução atual.
 from datetime import datetime, timedelta
 
 from sync import db_followups
-from sync.config import Config
-from sync.tiflux_client import TifluxClient
+from sync.config import Config, log
+from sync.tiflux_client import ListagemTifluxIncompleta, TifluxClient
 from sync.tipos import ConexaoDb
 
 _ACAO_ENCERRAMENTO = "encerramento"
@@ -27,9 +27,14 @@ def obter_chamados_com_mudanca_de_status(
     Ex.: obter_chamados_com_mudanca_de_status(conn, config, tiflux, datetime.now(timezone.utc))
     """
     inicio = agora_utc - timedelta(minutes=config.janela_mudancas_status_tiflux_minutos)
-    tickets = tiflux.listar_tickets_atualizados_desde(
-        inicio, config.tamanho_pagina_tickets_tiflux, config.max_paginas_tickets_tiflux,
-    )
+    try:
+        tickets = tiflux.listar_tickets_atualizados_desde(
+            inicio, config.tamanho_pagina_tickets_tiflux, config.max_paginas_tickets_tiflux,
+        )
+    except ListagemTifluxIncompleta as e:
+        # O rodízio normal continua cobrindo.
+        log(f"⚠️ {e}")
+        return []
     if not tickets:
         return []
     numeros = [t["ticket_number"] for t in tickets if t.get("ticket_number") is not None]

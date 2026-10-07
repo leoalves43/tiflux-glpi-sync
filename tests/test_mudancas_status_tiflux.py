@@ -1,8 +1,11 @@
+import contextlib
+import io
 import unittest
 from datetime import datetime, timedelta, timezone
 
 from sync.config import Config
 from sync.mudancas_status_tiflux import obter_chamados_com_mudanca_de_status, selecionar_mudancas_de_status
+from sync.tiflux_client import ListagemTifluxIncompleta
 from tests.fake_clients import FakeTifluxClient
 from tests.fakes import FakeConnection
 
@@ -54,6 +57,12 @@ class TestObterChamadosComMudancaDeStatus(unittest.TestCase):
         conn = FakeConnection()
         self.assertEqual(obter_chamados_com_mudanca_de_status(conn, _CONFIG, FakeTifluxClient(), _AGORA), [])
         self.assertEqual(conn.execucoes, [])
+
+    def test_listagem_incompleta_vira_lista_vazia(self):
+        tiflux = FakeTifluxClient()
+        tiflux.falha_listagem_atualizados = ListagemTifluxIncompleta("status 500", [])
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(obter_chamados_com_mudanca_de_status(FakeConnection(), _CONFIG, tiflux, _AGORA), [])
 
     def test_cruza_tickets_com_auditoria(self):
         tiflux = FakeTifluxClient()
