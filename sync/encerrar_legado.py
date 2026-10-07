@@ -17,9 +17,10 @@ import argparse
 import json
 
 from sync import db_chamados
+from sync.cascata_status import STATUS_GLPI_ABERTOS, encerrar_em_cascata
 from sync.config import Config, log
 from sync.glpi_client import GlpiClient
-from sync.cascata_status import STATUS_GLPI_ABERTOS, encerrar_em_cascata
+from sync.placar_followups import PlacarFollowups
 from sync.tiflux_client import TifluxClient
 
 ResultadoEncerramento = tuple[str, str]  # (status, mensagem)
@@ -57,18 +58,18 @@ def encerrar_legado(
     if recusa:
         return "recusado", recusa
 
-    totais = {"status_sucesso": 0, "status_erro": 0}
-    encerrar_em_cascata(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_tiflux, totais)
-    return _resultado_encerramento(totais, id_glpi, numero_tiflux, ticket_glpi, ticket_tiflux)
+    placar = PlacarFollowups()
+    encerrar_em_cascata(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_tiflux, placar)
+    return _resultado_encerramento(placar, id_glpi, numero_tiflux, ticket_glpi, ticket_tiflux)
 
 
 def _resultado_encerramento(
-    totais: dict[str, int], id_glpi: int, numero_tiflux: str, ticket_glpi: dict, ticket_tiflux: dict,
+    placar: PlacarFollowups, id_glpi: int, numero_tiflux: str, ticket_glpi: dict, ticket_tiflux: dict,
 ) -> ResultadoEncerramento:
     # Os dois títulos vão na mensagem pra o operador conferir que o par digitado é o certo.
     par = (f"GLPI #{id_glpi} \"{ticket_glpi.get('name')}\" / "
            f"Tiflux #{numero_tiflux} \"{ticket_tiflux.get('title')}\"")
-    if totais["status_sucesso"]:
+    if placar.cascata_sucesso:
         return "sucesso", f"Encerrado no GLPI (Solucionado): {par}"
     return "erro", (f"GLPI recusou o encerramento de {par} — detalhe em "
                     f"api_glpi_tiflux_followups (id_origem = -{id_glpi}).")

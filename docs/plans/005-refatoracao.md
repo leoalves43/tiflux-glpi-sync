@@ -26,7 +26,7 @@ de `test_sincronizacao_followups.py`), `docs/ARCHITECTURE.md`,
       Done: testes verdes, arquivos < 500.
 - [x] 2. Dividir `tests/test_sincronizacao_followups.py` por módulo (classes
       movidas sem alteração). Done: mesma contagem de testes, verdes.
-- [ ] 3. `PlacarFollowups` no lugar do dict `totais`. Done: verdes; log igual.
+- [x] 3. `PlacarFollowups` no lugar do dict `totais`. Done: verdes; log igual.
 - [ ] 4. Tipos: alias `ConexaoDb`, `NumeroTiflux = int | str`, `-> None` em
       `__init__`/handlers. Done: verdes; script AST sem parâmetro sem tipo.
 - [ ] 5. Funções > 20 linhas: `processamento_chamado._processar`,

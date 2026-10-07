@@ -5,6 +5,7 @@ import html
 from sync import db_followups
 from sync.config import Config, log
 from sync.glpi_client import GlpiClient
+from sync.placar_followups import PlacarFollowups
 from sync.publicacao_followups import prefixar_autor_tiflux, resposta_criada_pela_integracao
 from sync.regras_negocio import definir_autor_glpi
 from sync.tiflux_client import TifluxClient
@@ -40,7 +41,7 @@ def recusa_glpi_pendente(conn, config, id_glpi, ticket_tiflux: dict | None) -> b
     return db_followups.obter_ultima_acao_cascata_sucesso(conn, config, id_glpi) == "encerramento"
 
 
-def reabrir_tiflux_apos_recusa_glpi(conn, config, tiflux: TifluxClient, id_glpi, numero_tiflux, totais) -> bool:
+def reabrir_tiflux_apos_recusa_glpi(conn, config, tiflux: TifluxClient, id_glpi, numero_tiflux, placar: PlacarFollowups) -> bool:
     """
     Reabre o ticket no Tiflux (ver TifluxClient.reabrir_ticket). Toda
     tentativa grava a linha própria (direcao='glpi_para_tiflux',
@@ -49,7 +50,7 @@ def reabrir_tiflux_apos_recusa_glpi(conn, config, tiflux: TifluxClient, id_glpi,
     próxima execução retenta — antes, a falha sobrescrevia essa linha e o
     erro sumia (GLPI #34018, #34187, #34759; spec 004). O followup da recusa
     é publicado pelo caller logo em seguida, como qualquer followup pendente.
-    Ex.: reabrir_tiflux_apos_recusa_glpi(conn, config, tiflux, 34759, 364160, totais) -> False em 403
+    Ex.: reabrir_tiflux_apos_recusa_glpi(conn, config, tiflux, 34759, 364160, placar) -> False em 403
     """
     motivo = f"Solução recusada pelo requerente no GLPI (chamado #{id_glpi})"
     sucesso, erro = tiflux.reabrir_ticket(numero_tiflux, motivo)
@@ -62,7 +63,7 @@ def reabrir_tiflux_apos_recusa_glpi(conn, config, tiflux: TifluxClient, id_glpi,
     db_followups.registrar_resultado_followup(
         conn, config, id_glpi, numero_tiflux, "glpi_para_tiflux", "reabertura_tiflux", -id_glpi, None, status, mensagem,
     )
-    totais[f"status_{status}"] += 1
+    placar.contar_cascata(sucesso)
     if not sucesso:
         log(f"⚠️ Chamado #{id_glpi} reaberto no GLPI, mas o ticket Tiflux #{numero_tiflux} não reabriu "
             f"— reabra manualmente no Tiflux. {erro}")
@@ -90,7 +91,7 @@ def equalizar_reabertura_manual_do_tiflux(conn, config, id_glpi, numero_tiflux) 
     )
 
 
-def tratar_chamado_fechado_no_glpi(conn, config, glpi, id_glpi, numero_tiflux, ticket_glpi, ticket_tiflux, totais) -> None:
+def tratar_chamado_fechado_no_glpi(conn, config, glpi, id_glpi, numero_tiflux, ticket_glpi, ticket_tiflux, placar: PlacarFollowups) -> None:
     """
     Chamado já não está mais "aberto" no GLPI. Normalmente é porque um
     encerramento em cascata anterior já rodou (status Solucionado) — nesse
@@ -109,7 +110,7 @@ def tratar_chamado_fechado_no_glpi(conn, config, glpi, id_glpi, numero_tiflux, t
         _mudar_status_em_cascata(
             conn, config, glpi, id_glpi, numero_tiflux, STATUS_GLPI_REABERTO, "reabertura",
             f"Chamado #{id_glpi} reaberto no GLPI (status Processando) — reaberto no Tiflux #{numero_tiflux}",
-            totais,
+            placar,
         )
         return
 
@@ -120,7 +121,7 @@ def tratar_chamado_fechado_no_glpi(conn, config, glpi, id_glpi, numero_tiflux, t
 _SEM_RESPOSTA_TIFLUX = "Chamado encerrado no Tiflux, sem resposta pública registrada."
 
 
-def encerrar_em_cascata(conn, config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi, numero_tiflux, ticket_tiflux: dict, totais) -> None:
+def encerrar_em_cascata(conn, config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi, numero_tiflux, ticket_tiflux: dict, placar: PlacarFollowups) -> None:
     """
     Essa instalação do GLPI recusa (com HTTP 200 mas message não-vazia, ver
     GlpiClient._atualizar_chamado) mudar o status pra Solucionado sem técnico
@@ -140,7 +141,7 @@ def encerrar_em_cascata(conn, config, glpi: GlpiClient, tiflux: TifluxClient, id
     _mudar_status_em_cascata(
         conn, config, glpi, id_glpi, numero_tiflux, STATUS_GLPI_SOLUCIONADO, "encerramento",
         f"Chamado #{id_glpi} encerrado no GLPI (status Solucionado) — fechado/cancelado no Tiflux #{numero_tiflux}",
-        totais,
+        placar,
     )
 
 
@@ -179,7 +180,7 @@ def _ultima_resposta_publica_tiflux(tiflux: TifluxClient, numero_tiflux: str, co
     return prefixar_autor_tiflux(mais_recente.get("author"), mais_recente.get("answer_time"), conteudo)
 
 
-def _mudar_status_em_cascata(conn, config, glpi: GlpiClient, id_glpi, numero_tiflux, novo_status: int, tipo: str, mensagem_sucesso: str, totais) -> None:
+def _mudar_status_em_cascata(conn, config, glpi: GlpiClient, id_glpi, numero_tiflux, novo_status: int, tipo: str, mensagem_sucesso: str, placar: PlacarFollowups) -> None:
     """
     Aplica uma mudança de status no GLPI espelhando o estado do ticket no
     Tiflux (encerramento ou reabertura). Sem bookkeeping de "já processado":
@@ -196,4 +197,4 @@ def _mudar_status_em_cascata(conn, config, glpi: GlpiClient, id_glpi, numero_tif
         conn, config, id_glpi, numero_tiflux, "tiflux_para_glpi", tipo, -id_glpi, None,
         "sucesso" if sucesso else "erro", mensagem,
     )
-    totais["status_sucesso" if sucesso else "status_erro"] += 1
+    placar.contar_cascata(sucesso)
