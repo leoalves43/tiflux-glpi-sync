@@ -11,6 +11,7 @@ from requests import RequestException
 
 from sync.config import Config, log
 from sync.glpi_client import TIMEOUT_PADRAO_SEGUNDOS, Anexo
+from sync.limite_requisicoes_tiflux import SessaoTifluxLimitada
 from sync.tipos import NumeroTiflux
 
 
@@ -45,7 +46,7 @@ class TifluxClient:
 
     def __init__(
         self, url_base: str, token: str, cliente_id: int, id_solicitante_padrao: int,
-        session: requests.Session | None = None, timeout: int = TIMEOUT_PADRAO_SEGUNDOS,
+        session: requests.Session | SessaoTifluxLimitada | None = None, timeout: int = TIMEOUT_PADRAO_SEGUNDOS,
     ) -> None:
         self._url_base = url_base
         self._cliente_id = cliente_id
@@ -64,9 +65,10 @@ class TifluxClient:
 
     @classmethod
     def conectar(cls, config: Config) -> "TifluxClient":
+        sessao = SessaoTifluxLimitada(requests.Session(), config.reserva_requisicoes_tiflux)
         return cls(
             config.url_tiflux, config.token_tiflux, config.cliente_tiflux_id, config.id_solicitante_padrao,
-            timeout=config.timeout_http_segundos,
+            session=sessao, timeout=config.timeout_http_segundos,
         )
 
     def validar_mesa_do_cliente(self, id_mesa: int) -> bool:

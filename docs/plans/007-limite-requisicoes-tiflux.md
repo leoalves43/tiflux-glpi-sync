@@ -26,5 +26,5 @@ Nova config `reserva_requisicoes_tiflux` (env `RESERVA_REQUISICOES_TIFLUX`, padr
 
 ## Tasks
 - [x] 1. `SessaoTifluxLimitada` + testes dos critérios 1–5. Done: `python -m unittest` verde.
-- [ ] 2. Config + `conectar` + `exemplo.env` (critério 6) + teste. Done: verde.
+- [x] 2. Config + `conectar` + `exemplo.env` (critério 6) + teste. Done: verde.
 - [ ] 3. Rebuild do container; ARCHITECTURE, LOG, HANDOFF. Done: execução completa sem 429 no log.

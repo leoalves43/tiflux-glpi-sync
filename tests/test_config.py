@@ -44,6 +44,11 @@ class TestConfigCarregar(unittest.TestCase):
         self.assertEqual(config.db_host, "localhost")
         self.assertEqual(config.tabela_auditoria, "esquema.api_glpi_tiflux")
 
+    def test_reserva_do_tiflux_vem_do_ambiente_ou_padrao_5(self):
+        self.assertEqual(Config.carregar(self.caminho_env, ambiente={}).reserva_requisicoes_tiflux, 5)
+        config = Config.carregar(self.caminho_env, ambiente={"RESERVA_REQUISICOES_TIFLUX": "10"})
+        self.assertEqual(config.reserva_requisicoes_tiflux, 10)
+
 
 if __name__ == "__main__":
     unittest.main()

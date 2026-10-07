@@ -6,6 +6,8 @@ from unittest.mock import patch
 
 import requests
 
+from sync.config import Config
+from sync.limite_requisicoes_tiflux import SessaoTifluxLimitada
 from sync.tiflux_client import TifluxClient
 from tests.fakes import FakeRequests, FakeResponse
 
@@ -15,6 +17,18 @@ _sem_console = lambda: contextlib.redirect_stdout(io.StringIO())
 
 def _client() -> TifluxClient:
     return TifluxClient(URL_BASE, "token", cliente_id=762707, id_solicitante_padrao=3758056)
+
+
+class TestConectar(unittest.TestCase):
+    def test_usa_sessao_que_respeita_o_limite_do_tiflux(self):
+        config = Config(
+            url_glpi="", app_token="", user_token="", url_tiflux=URL_BASE, token_tiflux="t",
+            db_host="", db_port="5432", db_name="", db_user="", db_password="",
+            tabela_auditoria="x", tabela_followups="y", reserva_requisicoes_tiflux=9,
+        )
+        sessao = TifluxClient.conectar(config)._session
+        self.assertIsInstance(sessao, SessaoTifluxLimitada)
+        self.assertEqual(sessao._reserva, 9)
 
 
 class TestValidarMesaDoCliente(unittest.TestCase):

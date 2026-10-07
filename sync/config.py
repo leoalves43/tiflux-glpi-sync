@@ -33,6 +33,19 @@ def carregar_credenciais(caminho: str = ".env") -> dict[str, str]:
     return credenciais
 
 
+def inteiro_nao_negativo(cred: Mapping[str, str], chave: str, padrao: int) -> int:
+    """
+    Lê `chave` como inteiro >= 0; ausente ou vazia vira `padrao`.
+    Ex.: inteiro_nao_negativo({"RESERVA_REQUISICOES_TIFLUX": "10"}, "RESERVA_REQUISICOES_TIFLUX", 5) -> 10
+    """
+    bruto = (cred.get(chave) or "").strip()
+    if not bruto:
+        return padrao
+    if not bruto.isdigit():
+        raise ValueError(f"{chave}={bruto!r} inválido: esperado inteiro >= 0 (ex.: {padrao})")
+    return int(bruto)
+
+
 @dataclass(frozen=True)
 class Config:
     """Credenciais e parâmetros de negócio, resolvidos uma vez em main()."""
@@ -121,6 +134,10 @@ class Config:
     # paralelo por lote (também vira o pool_maxsize da sessão HTTP do GLPI).
     tamanho_lote_sondagem: int = 10
 
+    # Com RateLimit-Remaining do Tiflux nesse valor ou abaixo, a próxima chamada
+    # espera a virada do minuto (spec 007). Folga pra uso manual do mesmo token.
+    reserva_requisicoes_tiflux: int = 5
+
     @staticmethod
     def carregar(caminho_credenciais: str = ".env", ambiente: Mapping[str, str] | None = None) -> "Config":
         """
@@ -146,4 +163,5 @@ class Config:
             db_password=cred.get("DB_PASSWORD"),
             tabela_auditoria=f"{db_schema}.{db_table}",
             tabela_followups=f"{db_schema}.{db_table_followups}",
+            reserva_requisicoes_tiflux=inteiro_nao_negativo(cred, "RESERVA_REQUISICOES_TIFLUX", 5),
         )
