@@ -28,6 +28,10 @@ o Tiflux ser reaberto (por ela ou à mão). Reaberto à mão, o fluxo segue norm
    reaberto à mão) -> cascata registra `reabertura_tiflux`/`sucesso`, para que
    um fechamento posterior do técnico encerre o GLPI em vez de reabrir o Tiflux.
 
+8. Chamado Solucionado no GLPI (status 5, ainda recusável) é conferido em
+   toda execução, junto com os abertos; só Fechado (6) fica no lote limitado.
+   (07/10: 20 solucionados, 156 fechados.)
+
 ## Out of scope
 Obter a permissão de reabertura no Tiflux; recuperar recusas antigas já
 desfeitas (#34759 é corrigido à mão).

@@ -120,11 +120,18 @@ class TestObterUltimaAcaoCascataSucesso(unittest.TestCase):
 class TestRegistrarChamadoFechadoParaFollowups(unittest.TestCase):
     def test_usa_id_negativo_como_sentinela(self):
         conn = FakeConnection()
-        db_followups.registrar_chamado_fechado_para_followups(conn, _CONFIG, 42)
+        db_followups.registrar_chamado_fechado_para_followups(conn, _CONFIG, 42, solucionado=False)
         _, params = conn.execucoes[0]
         id_glpi, numero_tiflux, direcao, tipo, id_origem, id_destino, status, _mensagem = params
         self.assertEqual((id_glpi, numero_tiflux, direcao, tipo, id_origem, id_destino, status),
                           (42, None, "verificacao_status", "status", -42, None, "fechado"))
+
+    def test_solucionado_tem_marca_propria_fora_do_lote_de_fechados(self):
+        # GLPI #34759: solucionado ainda pode ser recusado -> varrido toda execução.
+        conn = FakeConnection()
+        db_followups.registrar_chamado_fechado_para_followups(conn, _CONFIG, 42, solucionado=True)
+        _, params = conn.execucoes[0]
+        self.assertEqual(params[2:7], ("verificacao_status", "status", -42, None, "solucionado"))
 
 
 

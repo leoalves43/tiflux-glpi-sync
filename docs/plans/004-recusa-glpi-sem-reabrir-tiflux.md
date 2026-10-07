@@ -25,4 +25,6 @@ varredura de chamado aberto com Tiflux aberto: equaliza cascata
 - [x] 1. Falha na reabertura não encerra o GLPI, linha própria, log (crit. 1–6)
       + testes. Done: `python -m unittest` verde.
 - [x] 2. Equalização após reabertura manual (crit. 7) + teste. Done: verde.
+- [x] 2b. Marca `solucionado` (GLPI 5) fora do lote de fechados (crit. 8) +
+      testes. Done: verde.
 - [ ] 3. Rebuild do container; docs (toon, LOG, HANDOFF). Done: log sem erro.

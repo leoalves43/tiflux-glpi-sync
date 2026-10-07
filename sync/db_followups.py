@@ -6,7 +6,8 @@ from sync.config import Config
 def obter_chamados_para_varrer_followups(conn, config: Config) -> list[tuple[int, int]]:
     """
     Pares (id_glpi, numero_tiflux) de chamados status='sucesso' a varrer
-    nesta execução: TODOS os abertos no GLPI ou nunca varridos, depois até
+    nesta execução: TODOS os abertos, solucionados (recusáveis) ou nunca
+    varridos no GLPI, depois até
     `tamanho_lote_fechados_followups` fechados. Antes era um lote único de 50
     dividido entre abertos e fechados — com 176 fechados, um chamado aberto
     esperava ~4 execuções (Tiflux #364569: 16 min; spec 003). Os fechados
@@ -166,14 +167,23 @@ def obter_chamados_por_numero_tiflux(conn, config: Config, numeros_tiflux: list[
         return {numero: (id_glpi, tipo) for numero, id_glpi, tipo in cur.fetchall()}
 
 
-def registrar_chamado_fechado_para_followups(conn, config: Config, id_glpi: int) -> None:
+def registrar_chamado_fechado_para_followups(conn, config: Config, id_glpi: int, solucionado: bool) -> None:
     """
     Marca (sem sincronizar nenhum followup) que este chamado foi conferido e
     está fechado no GLPI. Sem isso, um chamado fechado nunca ganharia uma
     linha na tabela de followups e ficaria pra sempre em primeiro lugar no
     rodízio de obter_chamados_para_varrer_followups (que ordena por última
     varredura), monopolizando o limite de chamados verificados por execução.
+    Solucionado (GLPI 5) ganha marca própria: o requerente ainda pode recusar,
+    então entra em toda execução junto com os abertos (GLPI #34759, spec 004);
+    só 'fechado' (GLPI 6, definitivo) fica no lote limitado.
+    Ex.: registrar_chamado_fechado_para_followups(conn, config, 34759, solucionado=True)
     """
+    if solucionado:
+        _registrar_verificacao_status(
+            conn, config, id_glpi, None, "solucionado", "Chamado solucionado no GLPI — conferido a cada execução (recusa)",
+        )
+        return
     _registrar_verificacao_status(
         conn, config, id_glpi, None, "fechado", "Chamado fechado no GLPI — fora do escopo da varredura de followups",
     )

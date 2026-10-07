@@ -101,5 +101,23 @@ class TestEqualizaReaberturaManualDoTiflux(unittest.TestCase):
         self.assertEqual(self.glpi.chamados_encerrados, [])
 
 
+class TestMarcaDeChamadoFechadoNoGlpi(unittest.TestCase):
+    def _marca(self, status_glpi: int) -> str:
+        glpi, tiflux = FakeGlpiClient(), FakeTifluxClient()
+        glpi.tickets[1] = {"status": status_glpi}
+        tiflux.ticket_tiflux = {"is_closed": True, "desk": {"id": 37964}}
+        conn = FakeConnection(respostas=[[(1, "T-1")]])
+        with contextlib.redirect_stdout(io.StringIO()):
+            sincronizar_followups(conn, _CONFIG, glpi, tiflux)
+        return [g[4] for g in _gravacoes(conn) if g[0] == "verificacao_status"][0]
+
+    def test_solucionado_recusavel_e_marcado_solucionado(self):
+        # Fora do lote limitado de fechados: recusa notada na execução seguinte.
+        self.assertEqual(self._marca(5), "solucionado")
+
+    def test_fechado_definitivo_e_marcado_fechado(self):
+        self.assertEqual(self._marca(6), "fechado")
+
+
 if __name__ == "__main__":
     unittest.main()

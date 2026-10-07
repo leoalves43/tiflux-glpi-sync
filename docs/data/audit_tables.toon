@@ -16,7 +16,7 @@ api_glpi_tiflux_followups[12]{column,type,nullable,default,note}:
   tipo,VARCHAR(20),false,-,publica|interna|status|encerramento|reabertura|reabertura_tiflux
   id_origem,INTEGER,false,-,part of unique conflict key (direcao,id_origem); negative -id_glpi sentinel: verificacao_status scan marker; tiflux_para_glpi cascade state; glpi_para_tiflux Tiflux-reopen attempt (spec 004)
   id_destino,INTEGER,true,-,set only on success; null on error
-  status,VARCHAR(20),false,-,sucesso|erro|fechado|aberto (last two: verificacao_status scan marker)
+  status,VARCHAR(20),false,-,sucesso|erro|fechado|solucionado|aberto (last three: verificacao_status scan marker; only fechado is batch-limited)
   mensagem,TEXT,true,-,-
   tentativas,INTEGER,false,1,incremented on ON CONFLICT UPDATE
   criado_em,TIMESTAMP,false,now(),-

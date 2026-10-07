@@ -179,7 +179,8 @@ def _tratar_chamado_fechado_no_glpi(conn, config, glpi, id_glpi, numero_tiflux, 
         )
         return
 
-    db_followups.registrar_chamado_fechado_para_followups(conn, config, id_glpi)
+    solucionado = ticket_glpi.get("status") == STATUS_GLPI_SOLUCIONADO
+    db_followups.registrar_chamado_fechado_para_followups(conn, config, id_glpi, solucionado)
 
 
 _SEM_RESPOSTA_TIFLUX = "Chamado encerrado no Tiflux, sem resposta pública registrada."
