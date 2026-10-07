@@ -4,8 +4,12 @@
 class FakeResponse:
     """Substitui requests.Response."""
 
-    def __init__(self, status_code: int = 200, json_data=None, text: str = "", content: bytes | None = None):
+    def __init__(
+        self, status_code: int = 200, json_data=None, text: str = "", content: bytes | None = None,
+        headers: dict[str, str] | None = None,
+    ):
         self.status_code = status_code
+        self.headers = headers or {}
         self._json_data = json_data
         self.text = text or ""
         self.content = content if content is not None else self.text.encode()
