@@ -8,6 +8,7 @@
 - `docs/specs/002-encerrar-legado.md` — read when closing in GLPI tickets opened by hand in Tiflux before the integration.
 - `docs/plans/002-encerrar-legado.md` — read with the spec above; task checklist.
 - `docs/specs/003-latencia-sincronizacao.md` — read when changing the followup rotation order or the loop interval.
+- `docs/plans/003-latencia-sincronizacao.md` — read with the spec above; task checklist.
 - `docs/data/audit_tables.toon` — read when writing SQL against either audit table (column names, types, conflict keys).
 
 No other docs exist. A path not listed above does not exist — don't assume it.
