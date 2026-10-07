@@ -23,7 +23,7 @@ ResultadoChamado = tuple[str, str | None, str]
 class _ChamadoNaoSincronizavel(Exception):
     """Interrompe o processamento de um chamado com o resultado final já decidido."""
 
-    def __init__(self, status: str, mensagem: str, numero_tiflux: str | None = None):
+    def __init__(self, status: str, mensagem: str, numero_tiflux: str | None = None) -> None:
         super().__init__(mensagem)
         self.status = status
         self.mensagem = mensagem
@@ -168,7 +168,9 @@ def _criar_ticket(tiflux: TifluxClient, form_data: dict[str, str]) -> str:
     return ticket_number_tiflux
 
 
-def _atribuir_tecnico(tiflux: TifluxClient, ticket_number_tiflux: str, id_tecnico_tiflux: int, nome_tecnico_tiflux: str) -> None:
+def _atribuir_tecnico(
+    tiflux: TifluxClient, ticket_number_tiflux: str, id_tecnico_tiflux: int, nome_tecnico_tiflux: str,
+) -> None:
     atribuiu, status_code, texto_resposta = tiflux.atribuir_tecnico(ticket_number_tiflux, id_tecnico_tiflux)
     if not atribuiu:
         msg = (f"Ticket #{ticket_number_tiflux} criado, mas falhou ao atribuir técnico "
@@ -240,8 +242,8 @@ def texto_para_html_tiflux(texto: str) -> str:
 
 
 def _montar_form_data(
-    ticket: dict, config: Config, mesa_tiflux: int, id_prioridade_tiflux: int,
-    id_solicitante_tiflux: int, nome_solicitante: str, email_solicitante: str | None, id_chamado: int,
+    ticket: dict, config: Config, mesa_tiflux: int, id_prioridade_tiflux: int, id_solicitante_tiflux: int,
+    nome_solicitante: str, email_solicitante: str | None, id_chamado: int,
 ) -> dict[str, str]:
     titulo_glpi = ticket.get("name")
 
@@ -269,7 +271,9 @@ def _montar_form_data(
     }
 
 
-def _sincronizar_anexos(glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_chamado: int, ticket_number_tiflux: str) -> str:
+def _sincronizar_anexos(
+    glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_chamado: int, ticket_number_tiflux: str,
+) -> str:
     """
     Anexos (arquivos e imagens da descrição) — não falha o chamado se algo
     aqui der errado, o ticket já foi criado; só devolve um resumo pro log/auditoria.

@@ -9,21 +9,21 @@ class _HTMLParaTexto(HTMLParser):
 
     _TAGS_QUEBRA_LINHA = {"p", "div", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "ol", "ul"}
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.partes: list[str] = []
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == "br":
             self.partes.append("\n")
         elif tag == "li":
             self.partes.append("\n- ")
 
-    def handle_endtag(self, tag):
+    def handle_endtag(self, tag: str) -> None:
         if tag in self._TAGS_QUEBRA_LINHA:
             self.partes.append("\n")
 
-    def handle_data(self, data):
+    def handle_data(self, data: str) -> None:
         self.partes.append(data)
 
 

@@ -8,6 +8,7 @@ from sync.glpi_client import GlpiClient
 from sync.processamento_chamado import processar_chamado
 from sync.sincronizacao_followups import sincronizar_followups
 from sync.tiflux_client import TifluxClient
+from sync.tipos import ConexaoDb
 
 
 def main() -> None:
@@ -41,7 +42,7 @@ def main() -> None:
         conn.close()
 
 
-def _processar_chamados_pendentes(conn, config: Config, glpi: GlpiClient, tiflux: TifluxClient) -> None:
+def _processar_chamados_pendentes(conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient) -> None:
     candidatos = _levantar_candidatos(conn, config, glpi)
     if not candidatos:
         log("Nenhum chamado novo ou pendente de retry.")
@@ -69,7 +70,7 @@ def _processar_chamados_pendentes(conn, config: Config, glpi: GlpiClient, tiflux
     log(f"Finalizado. Sucesso: {total_sucesso} | Ignorado: {total_ignorado} | Erro: {total_erro}")
 
 
-def _levantar_candidatos(conn, config: Config, glpi: GlpiClient) -> list[int]:
+def _levantar_candidatos(conn: ConexaoDb, config: Config, glpi: GlpiClient) -> list[int]:
     ids_processados = db_chamados.obter_ids_ja_processados(conn, config)
     ids_retry = db_chamados.obter_ids_para_retry(conn, config)
     # Só reprocessa erros de chamados que ainda estão dentro da faixa válida

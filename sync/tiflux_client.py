@@ -11,6 +11,7 @@ from requests import RequestException
 
 from sync.config import Config, log
 from sync.glpi_client import TIMEOUT_PADRAO_SEGUNDOS, Anexo
+from sync.tipos import NumeroTiflux
 
 
 def _campos_anexos(anexos: list[Anexo] | None) -> list[tuple]:
@@ -29,7 +30,7 @@ class TifluxClient:
     def __init__(
         self, url_base: str, token: str, cliente_id: int, id_solicitante_padrao: int,
         session: requests.Session | None = None, timeout: int = TIMEOUT_PADRAO_SEGUNDOS,
-    ):
+    ) -> None:
         self._url_base = url_base
         self._cliente_id = cliente_id
         self._id_solicitante_padrao = id_solicitante_padrao
@@ -183,7 +184,7 @@ class TifluxClient:
 
         return ticket_number, None
 
-    def obter_ticket(self, ticket_number: str) -> tuple[dict | None, int]:
+    def obter_ticket(self, ticket_number: NumeroTiflux) -> tuple[dict | None, int]:
         """
         GET /tickets/{ticket_number}. Usado a cada sincronização de followup
         (em vez de reaproveitar dados de quando o ticket foi criado) porque
@@ -232,7 +233,7 @@ class TifluxClient:
         return str(candidatos[0]), None
 
     @staticmethod
-    def _filtrar_tickets_pelo_id_glpi(tickets, id_chamado: int) -> list:
+    def _filtrar_tickets_pelo_id_glpi(tickets: list[dict], id_chamado: int) -> list:
         """
         O parâmetro `search` da API do Tiflux é fuzzy (bate em título, cliente,
         mesa, número do ticket, responsável e início da descrição — ver
@@ -245,7 +246,7 @@ class TifluxClient:
         padrao = re.compile(rf"(?<!\d){id_chamado}(?!\d)")
         return [t.get("ticket_number") for t in tickets if padrao.search(t.get("title") or "")]
 
-    def atribuir_tecnico(self, ticket_number: str, id_tecnico: int) -> tuple[bool, int, str]:
+    def atribuir_tecnico(self, ticket_number: NumeroTiflux, id_tecnico: int) -> tuple[bool, int, str]:
         """Retorna (sucesso, status_http_da_ultima_tentativa, corpo_da_resposta)."""
         url_alterar_responsavel = f"{self._url_base}/tickets/{ticket_number}/change_responsible"
         payload_resp = {"responsible_id": id_tecnico}
@@ -258,7 +259,7 @@ class TifluxClient:
         resp = self._session.put(url_put, json=payload_put, headers=self._headers_json, timeout=self._timeout)
         return resp.status_code in (200, 201, 204), resp.status_code, resp.text
 
-    def enviar_anexos(self, ticket_number: str, anexos: list[Anexo]) -> tuple[int, int, list[str]]:
+    def enviar_anexos(self, ticket_number: NumeroTiflux, anexos: list[Anexo]) -> tuple[int, int, list[str]]:
         """
         Envia os anexos pro ticket no Tiflux, em lotes de até 10 por requisição
         (limite da API). Retorna (qtd_enviados, qtd_falhados, motivos_das_falhas).
@@ -289,7 +290,7 @@ class TifluxClient:
 
         return enviados, falhados, motivos
 
-    def reabrir_ticket(self, ticket_number: str, motivo_reprovacao: str) -> tuple[bool, str | None]:
+    def reabrir_ticket(self, ticket_number: NumeroTiflux, motivo_reprovacao: str) -> tuple[bool, str | None]:
         """
         PUT /tickets/{ticket_number}/reopen. Usado quando o chamado volta a
         ficar aberto no GLPI (ex.: requerente recusa a solução) enquanto o
@@ -317,7 +318,7 @@ class TifluxClient:
         return False, f"Falha ao reabrir ticket no Tiflux ({resp.status_code}): {resp.text}"
 
     def publicar_resposta_cliente(
-        self, ticket_number: str, conteudo: str, nome_requerente: str, anexos: list[Anexo] | None = None,
+        self, ticket_number: NumeroTiflux, conteudo: str, nome_requerente: str, anexos: list[Anexo] | None = None,
     ) -> requests.Response:
         campos = [("name", (None, conteudo)), ("author_name", (None, nome_requerente))]
         return self._session.post(
@@ -327,7 +328,7 @@ class TifluxClient:
             timeout=self._timeout,
         )
 
-    def publicar_comunicacao_interna(self, ticket_number: str, conteudo: str) -> requests.Response:
+    def publicar_comunicacao_interna(self, ticket_number: NumeroTiflux, conteudo: str) -> requests.Response:
         return self._session.post(
             f"{self._url_base}/tickets/{ticket_number}/internal_communications",
             files={"text": (None, conteudo)},
@@ -335,13 +336,17 @@ class TifluxClient:
             timeout=self._timeout,
         )
 
-    def listar_respostas(self, ticket_number: str, tamanho_pagina: int, max_paginas: int) -> list[dict]:
+    def listar_respostas(self, ticket_number: NumeroTiflux, tamanho_pagina: int, max_paginas: int) -> list[dict]:
         return self._listar_paginado("answers", ticket_number, tamanho_pagina, max_paginas)
 
-    def listar_comunicacoes_internas(self, ticket_number: str, tamanho_pagina: int, max_paginas: int) -> list[dict]:
+    def listar_comunicacoes_internas(
+        self, ticket_number: NumeroTiflux, tamanho_pagina: int, max_paginas: int,
+    ) -> list[dict]:
         return self._listar_paginado("internal_communications", ticket_number, tamanho_pagina, max_paginas)
 
-    def listar_tickets_atualizados_desde(self, inicio_utc: datetime, tamanho_pagina: int, max_paginas: int) -> list[dict]:
+    def listar_tickets_atualizados_desde(
+        self, inicio_utc: datetime, tamanho_pagina: int, max_paginas: int,
+    ) -> list[dict]:
         """
         Tickets do cliente (abertos e fechados) atualizados no Tiflux a partir de
         `inicio_utc` — uma consulta paginada em vez de um GET por ticket. Usado
@@ -362,11 +367,15 @@ class TifluxClient:
             log(f"⚠️ Falha ao listar tickets atualizados no Tiflux desde {params['update_start_datetime']}: {e}")
             return []
 
-    def _listar_paginado(self, endpoint: str, ticket_number: str, tamanho_pagina: int, max_paginas: int) -> list[dict]:
+    def _listar_paginado(
+        self, endpoint: str, ticket_number: NumeroTiflux, tamanho_pagina: int, max_paginas: int,
+    ) -> list[dict]:
         url = f"{self._url_base}/tickets/{ticket_number}/{endpoint}"
         return self._paginar(url, {}, tamanho_pagina, max_paginas, f"{endpoint} do ticket Tiflux #{ticket_number}")
 
-    def _paginar(self, url: str, params: dict[str, str], tamanho_pagina: int, max_paginas: int, descricao: str) -> list[dict]:
+    def _paginar(
+        self, url: str, params: dict[str, str], tamanho_pagina: int, max_paginas: int, descricao: str,
+    ) -> list[dict]:
         """
         Pagina um endpoint de listagem do Tiflux (offset = número da página, não
         deslocamento de linha — ver doc da API) e retorna todos os itens.

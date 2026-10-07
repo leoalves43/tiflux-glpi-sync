@@ -17,10 +17,11 @@ from sync.mudancas_status_tiflux import obter_chamados_com_mudanca_de_status
 from sync.placar_followups import PlacarFollowups
 from sync.publicacao_followups import sincronizar_followups_glpi_para_tiflux, sincronizar_followups_tiflux_para_glpi
 from sync.tiflux_client import TifluxClient
+from sync.tipos import ConexaoDb, NumeroTiflux
 
 
 def sincronizar_followups(
-    conn, config: Config, glpi: GlpiClient, tiflux: TifluxClient, agora_utc: datetime | None = None,
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, agora_utc: datetime | None = None,
 ) -> None:
     """
     Percorre os chamados com encerramento/reabertura recente no Tiflux
@@ -51,7 +52,10 @@ def _juntar_sem_repetir(primeiros: list[tuple[int, int]], demais: list[tuple[int
     return primeiros + [par for par in demais if par[0] not in ja_incluidos]
 
 
-def _sincronizar_chamado_aberto(conn, config, glpi, tiflux, id_glpi, numero_tiflux, placar: PlacarFollowups) -> None:
+def _sincronizar_chamado_aberto(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
+    numero_tiflux: NumeroTiflux, placar: PlacarFollowups,
+) -> None:
     ticket_glpi, status_code = glpi.obter_ticket(id_glpi)
     if ticket_glpi is None:
         log(f"⚠️ Não foi possível conferir status do chamado #{id_glpi} no GLPI "
@@ -82,6 +86,9 @@ def _sincronizar_chamado_aberto(conn, config, glpi, tiflux, id_glpi, numero_tifl
         equalizar_reabertura_manual_do_tiflux(conn, config, id_glpi, numero_tiflux)
 
 
-def _sincronizar_followups_nos_dois_sentidos(conn, config, glpi, tiflux, id_glpi, numero_tiflux, placar: PlacarFollowups) -> None:
+def _sincronizar_followups_nos_dois_sentidos(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
+    numero_tiflux: NumeroTiflux, placar: PlacarFollowups,
+) -> None:
     placar.somar_glpi_para_tiflux(*sincronizar_followups_glpi_para_tiflux(conn, config, glpi, tiflux, id_glpi, numero_tiflux))
     placar.somar_tiflux_para_glpi(*sincronizar_followups_tiflux_para_glpi(conn, config, glpi, tiflux, id_glpi, numero_tiflux))

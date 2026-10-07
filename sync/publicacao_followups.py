@@ -3,11 +3,14 @@
 import html
 from datetime import datetime, timedelta
 
+import requests
+
 from sync import db_followups
 from sync.config import Config, log
 from sync.glpi_client import GlpiClient
 from sync.regras_negocio import definir_autor_glpi
 from sync.tiflux_client import TifluxClient
+from sync.tipos import ConexaoDb, NumeroTiflux
 
 
 def prefixar_autor_tiflux(nome: str | None, timestamp_utc: str | None, conteudo: str) -> str:
@@ -46,7 +49,8 @@ def _acumular(sucesso: bool, qtd_sucesso: int, qtd_erro: int) -> tuple[int, int]
 
 
 def sincronizar_followups_glpi_para_tiflux(
-    conn, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_chamado: int, numero_tiflux: str,
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_chamado: int,
+    numero_tiflux: NumeroTiflux,
 ) -> tuple[int, int]:
     """
     Busca followups do chamado no GLPI, filtra os que ainda não foram
@@ -64,7 +68,7 @@ def sincronizar_followups_glpi_para_tiflux(
     return qtd_sucesso, qtd_erro
 
 
-def _followups_glpi_pendentes(conn, config: Config, glpi: GlpiClient, id_chamado: int) -> list[dict]:
+def _followups_glpi_pendentes(conn: ConexaoDb, config: Config, glpi: GlpiClient, id_chamado: int) -> list[dict]:
     """
     Followups do GLPI ainda não publicados no Tiflux, excluindo os que a
     própria integração criou lá (Tiflux -> GLPI): esses sempre têm users_id
@@ -96,7 +100,10 @@ def _followups_glpi_pendentes(conn, config: Config, glpi: GlpiClient, id_chamado
 _MAX_ANEXOS_POR_RESPOSTA_TIFLUX = 10
 
 
-def _publicar_followup_no_tiflux(conn, config, glpi: GlpiClient, tiflux: TifluxClient, id_chamado, numero_tiflux, followup) -> bool:
+def _publicar_followup_no_tiflux(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_chamado: int,
+    numero_tiflux: NumeroTiflux, followup: dict,
+) -> bool:
     id_origem = followup.get("id")
     # Alguns followups do GLPI vêm com o conteúdo HTML-entity-encoded
     # (ex.: "&#60;p&#62;texto&#60;/p&#62;" em vez de "<p>texto</p>"),
@@ -119,7 +126,9 @@ def _publicar_followup_no_tiflux(conn, config, glpi: GlpiClient, tiflux: TifluxC
     return sucesso
 
 
-def _enviar_anexos_excedentes(tiflux: TifluxClient, numero_tiflux, id_origem, anexos_excedentes: list) -> None:
+def _enviar_anexos_excedentes(
+    tiflux: TifluxClient, numero_tiflux: NumeroTiflux, id_origem: int, anexos_excedentes: list,
+) -> None:
     """Followup com mais de 10 anexos — o excedente vai pro chamado (nível ticket) no Tiflux, perdendo o vínculo visual com o followup, mas sem ser descartado."""
     _, falhados, motivos = tiflux.enviar_anexos(numero_tiflux, anexos_excedentes)
     if falhados:
@@ -127,7 +136,10 @@ def _enviar_anexos_excedentes(tiflux: TifluxClient, numero_tiflux, id_origem, an
             f"Tiflux #{numero_tiflux}: {'; '.join(motivos)}")
 
 
-def _registrar_publicacao_no_tiflux(conn, config, id_chamado, numero_tiflux, tipo, id_origem, resp, avisos_anexos: list) -> bool:
+def _registrar_publicacao_no_tiflux(
+    conn: ConexaoDb, config: Config, id_chamado: int, numero_tiflux: NumeroTiflux, tipo: str, id_origem: int,
+    resp: requests.Response, avisos_anexos: list,
+) -> bool:
     if resp.status_code not in (200, 201):
         db_followups.registrar_resultado_followup(
             conn, config, id_chamado, numero_tiflux, "glpi_para_tiflux", tipo, id_origem, None,
@@ -153,7 +165,8 @@ def _registrar_publicacao_no_tiflux(conn, config, id_chamado, numero_tiflux, tip
 
 
 def sincronizar_followups_tiflux_para_glpi(
-    conn, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_chamado: int, numero_tiflux: str,
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_chamado: int,
+    numero_tiflux: NumeroTiflux,
 ) -> tuple[int, int]:
     """
     Busca respostas públicas (/answers) do ticket no Tiflux, filtra as que
@@ -178,7 +191,10 @@ def sincronizar_followups_tiflux_para_glpi(
     return _publicar_respostas_publicas(conn, config, glpi, id_chamado, numero_tiflux, respostas, ja_processados_ou_proprios, id_autor_glpi)
 
 
-def _publicar_respostas_publicas(conn, config, glpi: GlpiClient, id_chamado, numero_tiflux, respostas, ja_processados_ou_proprios, id_autor_glpi: int) -> tuple[int, int]:
+def _publicar_respostas_publicas(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, id_chamado: int, numero_tiflux: NumeroTiflux,
+    respostas: list[dict], ja_processados_ou_proprios: set[int], id_autor_glpi: int,
+) -> tuple[int, int]:
     qtd_sucesso = qtd_erro = 0
     # O Tiflux lista da mais nova pra mais antiga; publicar nessa ordem deixava a
     # timeline do GLPI invertida quando várias entram de uma vez (GLPI #34848).
@@ -217,7 +233,8 @@ def _restaurar_status_novo_glpi(glpi: GlpiClient, id_glpi: int) -> None:
 
 
 def _registrar_followup_tiflux_para_glpi(
-    conn, config, id_chamado, numero_tiflux, tipo, id_origem, id_criado, erro, mensagem_sucesso: str,
+    conn: ConexaoDb, config: Config, id_chamado: int, numero_tiflux: NumeroTiflux, tipo: str, id_origem: int,
+    id_criado: int | None, erro: str | None, mensagem_sucesso: str,
 ) -> bool:
     if erro:
         db_followups.registrar_resultado_followup(

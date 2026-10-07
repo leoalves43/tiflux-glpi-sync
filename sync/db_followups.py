@@ -1,9 +1,10 @@
 """Postgres — tabela de auditoria de followups (várias linhas por chamado)."""
 
 from sync.config import Config
+from sync.tipos import ConexaoDb, NumeroTiflux
 
 
-def obter_chamados_para_varrer_followups(conn, config: Config) -> list[tuple[int, int]]:
+def obter_chamados_para_varrer_followups(conn: ConexaoDb, config: Config) -> list[tuple[int, int]]:
     """
     Pares (id_glpi, numero_tiflux) de chamados status='sucesso' a varrer
     nesta execução: TODOS os abertos, solucionados (recusáveis) ou nunca
@@ -57,7 +58,7 @@ def obter_chamados_para_varrer_followups(conn, config: Config) -> list[tuple[int
         return cur.fetchall()
 
 
-def obter_followups_glpi_ja_processados(conn, config: Config, id_glpi: int) -> set[int]:
+def obter_followups_glpi_ja_processados(conn: ConexaoDb, config: Config, id_glpi: int) -> set[int]:
     """
     IDs de ITILFollowup do GLPI já publicados com sucesso no Tiflux para este
     chamado. Só considera status='sucesso' (mesmo critério de
@@ -74,7 +75,9 @@ def obter_followups_glpi_ja_processados(conn, config: Config, id_glpi: int) -> s
         return {row[0] for row in cur.fetchall()}
 
 
-def obter_respostas_tiflux_ja_processadas_ou_proprias(conn, config: Config, numero_tiflux: int) -> set[int]:
+def obter_respostas_tiflux_ja_processadas_ou_proprias(
+    conn: ConexaoDb, config: Config, numero_tiflux: NumeroTiflux,
+) -> set[int]:
     """
     IDs de resposta/comunicação interna do Tiflux a IGNORAR na varredura
     Tiflux -> GLPI: os que já processamos com sucesso nesse sentido (direcao=
@@ -99,8 +102,8 @@ def obter_respostas_tiflux_ja_processadas_ou_proprias(conn, config: Config, nume
 
 
 def registrar_resultado_followup(
-    conn, config: Config, id_glpi: int, numero_tiflux, direcao: str, tipo: str,
-    id_origem: int, id_destino, status: str, mensagem: str,
+    conn: ConexaoDb, config: Config, id_glpi: int, numero_tiflux: NumeroTiflux | None, direcao: str, tipo: str,
+    id_origem: int, id_destino: int | None, status: str, mensagem: str,
 ) -> None:
     """Grava (ou atualiza, em caso de retry) o resultado da sincronização de um followup."""
     tabela = config.tabela_followups
@@ -124,7 +127,7 @@ def registrar_resultado_followup(
     conn.commit()
 
 
-def obter_ultima_acao_cascata_sucesso(conn, config: Config, id_glpi: int) -> str | None:
+def obter_ultima_acao_cascata_sucesso(conn: ConexaoDb, config: Config, id_glpi: int) -> str | None:
     """
     `tipo` ('encerramento', 'reabertura' ou 'reabertura_tiflux') da última
     ação de encerramento/reabertura em cascata BEM-SUCEDIDA registrada pra
@@ -146,7 +149,9 @@ def obter_ultima_acao_cascata_sucesso(conn, config: Config, id_glpi: int) -> str
         return linha[0] if linha else None
 
 
-def obter_chamados_por_numero_tiflux(conn, config: Config, numeros_tiflux: list[int]) -> dict[int, tuple[int, str | None]]:
+def obter_chamados_por_numero_tiflux(
+    conn: ConexaoDb, config: Config, numeros_tiflux: list[int],
+) -> dict[int, tuple[int, str | None]]:
     """
     numero_tiflux -> (id_glpi, última ação de cascata bem-sucedida) dos
     chamados sincronizados com sucesso entre `numeros_tiflux`. A ação segue o
@@ -167,7 +172,7 @@ def obter_chamados_por_numero_tiflux(conn, config: Config, numeros_tiflux: list[
         return {numero: (id_glpi, tipo) for numero, id_glpi, tipo in cur.fetchall()}
 
 
-def registrar_chamado_fechado_para_followups(conn, config: Config, id_glpi: int, solucionado: bool) -> None:
+def registrar_chamado_fechado_para_followups(conn: ConexaoDb, config: Config, id_glpi: int, solucionado: bool) -> None:
     """
     Marca (sem sincronizar nenhum followup) que este chamado foi conferido e
     está fechado no GLPI. Sem isso, um chamado fechado nunca ganharia uma
@@ -189,7 +194,9 @@ def registrar_chamado_fechado_para_followups(conn, config: Config, id_glpi: int,
     )
 
 
-def registrar_chamado_aberto_varrido(conn, config: Config, id_glpi: int, numero_tiflux) -> None:
+def registrar_chamado_aberto_varrido(
+    conn: ConexaoDb, config: Config, id_glpi: int, numero_tiflux: NumeroTiflux | None,
+) -> None:
     """
     Marca que os followups deste chamado aberto acabaram de ser varridos,
     mesmo sem nenhum followup novo. O rodízio de
@@ -205,7 +212,9 @@ def registrar_chamado_aberto_varrido(conn, config: Config, id_glpi: int, numero_
     )
 
 
-def _registrar_verificacao_status(conn, config: Config, id_glpi: int, numero_tiflux, status: str, mensagem: str) -> None:
+def _registrar_verificacao_status(
+    conn: ConexaoDb, config: Config, id_glpi: int, numero_tiflux: NumeroTiflux | None, status: str, mensagem: str,
+) -> None:
     """Linha única por chamado (direcao='verificacao_status', id_origem=-id_glpi); o upsert atualiza atualizado_em a cada varredura."""
     registrar_resultado_followup(
         conn, config, id_glpi, numero_tiflux, "verificacao_status", "status", -id_glpi, None, status, mensagem,

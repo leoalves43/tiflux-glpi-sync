@@ -25,6 +25,7 @@ from sync.glpi_client import GlpiClient
 from sync.processamento_chamado import processar_chamado
 from sync.publicacao_followups import sincronizar_followups_glpi_para_tiflux, sincronizar_followups_tiflux_para_glpi
 from sync.tiflux_client import TifluxClient
+from sync.tipos import ConexaoDb, NumeroTiflux
 
 ACAO_CRIAR = "criar"
 ACAO_RECUSAR_NUMERO_EXISTENTE = "recusar_numero_existente"
@@ -99,7 +100,7 @@ def _ler_argumento_id_glpi() -> int:
     return parser.parse_args().id_glpi
 
 
-def _obter_lock(conn, id_glpi: int) -> bool:
+def _obter_lock(conn: ConexaoDb, id_glpi: int) -> bool:
     """
     Lock consultivo de sessão do Postgres — evita que duas execuções
     simultâneas (duplo clique, duas abas) forcem o mesmo chamado ao mesmo
@@ -112,12 +113,12 @@ def _obter_lock(conn, id_glpi: int) -> bool:
         return cur.fetchone()[0]
 
 
-def _liberar_lock(conn, id_glpi: int) -> None:
+def _liberar_lock(conn: ConexaoDb, id_glpi: int) -> None:
     with conn.cursor() as cur:
         cur.execute("SELECT pg_advisory_unlock(hashtext(%s), %s)", (_CHAVE_LOCK, id_glpi))
 
 
-def _forcar(conn, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int) -> None:
+def _forcar(conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int) -> None:
     estado = db_chamados.obter_estado_chamado(conn, config, id_glpi)
     acao = decidir_acao(estado)
 
@@ -139,7 +140,7 @@ def _forcar(conn, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glp
     _forcar_criacao(conn, config, glpi, tiflux, id_glpi)
 
 
-def _forcar_criacao(conn, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int) -> None:
+def _forcar_criacao(conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int) -> None:
     numero_ja_existente = _numero_tiflux_no_titulo(glpi, id_glpi)
     if numero_ja_existente:
         _imprimir_resultado(
@@ -175,7 +176,10 @@ def _numero_tiflux_no_titulo(glpi: GlpiClient, id_glpi: int) -> str | None:
     return match.group(1) if match else None
 
 
-def _forcar_followups(conn, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int, numero_tiflux) -> None:
+def _forcar_followups(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
+    numero_tiflux: NumeroTiflux,
+) -> None:
     ticket_glpi, status_code = glpi.obter_ticket(id_glpi)
     if ticket_glpi is None:
         _imprimir_resultado(
@@ -206,7 +210,7 @@ def _forcar_followups(conn, config: Config, glpi: GlpiClient, tiflux: TifluxClie
     _imprimir_resultado(status, numero_tiflux, mensagem)
 
 
-def _imprimir_resultado(status: str, numero_tiflux, mensagem: str) -> None:
+def _imprimir_resultado(status: str, numero_tiflux: NumeroTiflux | None, mensagem: str) -> None:
     print(json.dumps({"status": status, "numero_tiflux": numero_tiflux, "mensagem": mensagem}, ensure_ascii=False))
 
 

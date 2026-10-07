@@ -22,11 +22,12 @@ from sync.config import Config, log
 from sync.glpi_client import GlpiClient
 from sync.placar_followups import PlacarFollowups
 from sync.tiflux_client import TifluxClient
+from sync.tipos import ConexaoDb, NumeroTiflux
 
 ResultadoEncerramento = tuple[str, str]  # (status, mensagem)
 
 
-def motivo_recusa(ticket_glpi: dict, ticket_tiflux: dict, id_glpi: int, numero_tiflux: str) -> str | None:
+def motivo_recusa(ticket_glpi: dict, ticket_tiflux: dict, id_glpi: int, numero_tiflux: NumeroTiflux) -> str | None:
     """
     Por que não encerrar, ou None se pode. Só encerra o que já foi resolvido
     no Tiflux e ainda está aberto no GLPI.
@@ -41,7 +42,8 @@ def motivo_recusa(ticket_glpi: dict, ticket_tiflux: dict, id_glpi: int, numero_t
 
 
 def encerrar_legado(
-    conn, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int, numero_tiflux: str,
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
+    numero_tiflux: NumeroTiflux,
 ) -> ResultadoEncerramento:
     """
     Confere os dois lados e, se elegível, encerra o chamado no GLPI.
@@ -64,7 +66,7 @@ def encerrar_legado(
 
 
 def _resultado_encerramento(
-    placar: PlacarFollowups, id_glpi: int, numero_tiflux: str, ticket_glpi: dict, ticket_tiflux: dict,
+    placar: PlacarFollowups, id_glpi: int, numero_tiflux: NumeroTiflux, ticket_glpi: dict, ticket_tiflux: dict,
 ) -> ResultadoEncerramento:
     # Os dois títulos vão na mensagem pra o operador conferir que o par digitado é o certo.
     par = (f"GLPI #{id_glpi} \"{ticket_glpi.get('name')}\" / "

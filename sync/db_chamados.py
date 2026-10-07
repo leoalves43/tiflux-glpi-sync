@@ -4,6 +4,7 @@ import psycopg2
 import psycopg2.extensions
 
 from sync.config import Config
+from sync.tipos import ConexaoDb, NumeroTiflux
 
 
 def conectar_db(config: Config) -> psycopg2.extensions.connection:
@@ -34,7 +35,7 @@ def _sanear_win1252(texto: str) -> str:
     return texto.encode("cp1252", errors="replace").decode("cp1252")
 
 
-def obter_ids_ja_processados(conn, config: Config) -> set[int]:
+def obter_ids_ja_processados(conn: ConexaoDb, config: Config) -> set[int]:
     """
     IDs que já têm um resultado de sucesso gravado e não devem ser reprocessados.
     Chamados 'ignorado' (sem o grupo observador) não são gravados na auditoria,
@@ -46,7 +47,7 @@ def obter_ids_ja_processados(conn, config: Config) -> set[int]:
         return {row[0] for row in cur.fetchall()}
 
 
-def obter_proximo_id_para_sondar(conn, config: Config) -> int:
+def obter_proximo_id_para_sondar(conn: ConexaoDb, config: Config) -> int:
     """
     De onde a sondagem deve continuar: o menor id_glpi entre os últimos
     QUANTIDADE_REGISTROS_PARA_RECUO chamados já confirmados (status 'sucesso'
@@ -81,7 +82,7 @@ def obter_proximo_id_para_sondar(conn, config: Config) -> int:
     return max(config.id_minimo_glpi, menor_id_recente)
 
 
-def obter_estado_chamado(conn, config: Config, id_glpi: int) -> tuple[str, int | None] | None:
+def obter_estado_chamado(conn: ConexaoDb, config: Config, id_glpi: int) -> tuple[str, int | None] | None:
     """
     Status e numero_tiflux atuais de um chamado na auditoria, ou None se ele
     nunca teve um resultado gravado. Usado por forcar_sincronizacao.py pra
@@ -94,14 +95,16 @@ def obter_estado_chamado(conn, config: Config, id_glpi: int) -> tuple[str, int |
     return (row[0], row[1]) if row else None
 
 
-def obter_ids_para_retry(conn, config: Config) -> set[int]:
+def obter_ids_para_retry(conn: ConexaoDb, config: Config) -> set[int]:
     tabela = config.tabela_auditoria
     with conn.cursor() as cur:
         cur.execute(f"SELECT id_glpi FROM {tabela} WHERE status = 'erro'")
         return {row[0] for row in cur.fetchall()}
 
 
-def registrar_resultado(conn, config: Config, id_glpi: int, numero_tiflux, status: str, mensagem: str) -> None:
+def registrar_resultado(
+    conn: ConexaoDb, config: Config, id_glpi: int, numero_tiflux: NumeroTiflux | None, status: str, mensagem: str,
+) -> None:
     """Grava (ou atualiza, em caso de retry) o resultado da sincronização de um chamado."""
     tabela = config.tabela_auditoria
     with conn.cursor() as cur:

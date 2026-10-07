@@ -49,7 +49,7 @@ class GlpiClient:
     def __init__(
         self, url_base: str, app_token: str, headers: dict[str, str], session: requests.Session | None = None,
         timeout: int = TIMEOUT_PADRAO_SEGUNDOS, tamanho_lote_sondagem: int = TAMANHO_LOTE_SONDAGEM_PADRAO,
-    ):
+    ) -> None:
         self._url_base = url_base
         self._app_token = app_token
         self._headers = headers
@@ -376,7 +376,9 @@ class GlpiClient:
             return lista_emails[0].get("email")
         return None
 
-    def chamado_tem_grupo_observador(self, id_chamado: int, ids_grupo_observador: tuple[int, ...]) -> tuple[bool, str | None]:
+    def chamado_tem_grupo_observador(
+        self, id_chamado: int, ids_grupo_observador: tuple[int, ...],
+    ) -> tuple[bool, str | None]:
         """
         Confere se algum ID de ids_grupo_observador está vinculado ao chamado
         como OBSERVADOR (type=3 em Group_Ticket, conforme GLPI: 1=Requerente,
@@ -420,7 +422,9 @@ class GlpiClient:
             f"/ITILFollowup/{id_followup}/Document_Item", tamanho_maximo_mb, "Falha ao listar anexos do followup no GLPI",
         )
 
-    def _obter_anexos_de(self, caminho: str, tamanho_maximo_mb: int, mensagem_erro: str) -> tuple[list[Anexo], list[str]]:
+    def _obter_anexos_de(
+        self, caminho: str, tamanho_maximo_mb: int, mensagem_erro: str,
+    ) -> tuple[list[Anexo], list[str]]:
         resp = self._get(caminho)
         if resp.status_code not in (200, 206):
             return [], [f"{mensagem_erro} (status {resp.status_code})"]

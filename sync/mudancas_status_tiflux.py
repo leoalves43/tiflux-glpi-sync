@@ -12,12 +12,13 @@ from datetime import datetime, timedelta
 from sync import db_followups
 from sync.config import Config
 from sync.tiflux_client import TifluxClient
+from sync.tipos import ConexaoDb
 
 _ACAO_ENCERRAMENTO = "encerramento"
 
 
 def obter_chamados_com_mudanca_de_status(
-    conn, config: Config, tiflux: TifluxClient, agora_utc: datetime,
+    conn: ConexaoDb, config: Config, tiflux: TifluxClient, agora_utc: datetime,
 ) -> list[tuple[int, int]]:
     """
     Pares (id_glpi, numero_tiflux) cujo status no Tiflux diverge da última
