@@ -22,11 +22,8 @@ from sync import db_chamados
 from sync.config import Config, log
 from sync.glpi_client import GlpiClient
 from sync.processamento_chamado import processar_chamado
-from sync.sincronizacao_followups import (
-    STATUS_GLPI_ABERTOS,
-    sincronizar_followups_glpi_para_tiflux,
-    sincronizar_followups_tiflux_para_glpi,
-)
+from sync.cascata_status import STATUS_GLPI_ABERTOS
+from sync.publicacao_followups import sincronizar_followups_glpi_para_tiflux, sincronizar_followups_tiflux_para_glpi
 from sync.tiflux_client import TifluxClient
 
 ACAO_CRIAR = "criar"

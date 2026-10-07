@@ -19,7 +19,7 @@ import json
 from sync import db_chamados
 from sync.config import Config, log
 from sync.glpi_client import GlpiClient
-from sync.sincronizacao_followups import STATUS_GLPI_ABERTOS, encerrar_em_cascata
+from sync.cascata_status import STATUS_GLPI_ABERTOS, encerrar_em_cascata
 from sync.tiflux_client import TifluxClient
 
 ResultadoEncerramento = tuple[str, str]  # (status, mensagem)

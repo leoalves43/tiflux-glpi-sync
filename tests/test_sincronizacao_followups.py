@@ -3,13 +3,13 @@ import io
 import unittest
 
 from sync.config import Config
-from sync.sincronizacao_followups import (
-    _formatar_data_hora_brasilia,
-    _prefixar_autor_tiflux,
-    sincronizar_followups,
+from sync.publicacao_followups import (
+    formatar_data_hora_brasilia,
+    prefixar_autor_tiflux,
     sincronizar_followups_glpi_para_tiflux,
     sincronizar_followups_tiflux_para_glpi,
 )
+from sync.sincronizacao_followups import sincronizar_followups
 from tests.fake_clients import FakeGlpiClient, FakeTifluxClient, _FakeHttpResponse
 from tests.fakes import FakeConnection
 
@@ -25,26 +25,26 @@ _CONFIG = Config(
 
 class TestFormatarDataHoraBrasilia(unittest.TestCase):
     def test_converte_utc_para_brasilia(self):
-        self.assertEqual(_formatar_data_hora_brasilia("2026-09-09T14:10:26Z"), "09/09/2026 11:10")
+        self.assertEqual(formatar_data_hora_brasilia("2026-09-09T14:10:26Z"), "09/09/2026 11:10")
 
     def test_none_retorna_none(self):
-        self.assertIsNone(_formatar_data_hora_brasilia(None))
+        self.assertIsNone(formatar_data_hora_brasilia(None))
 
     def test_formato_invalido_retorna_none(self):
-        self.assertIsNone(_formatar_data_hora_brasilia("não é uma data"))
+        self.assertIsNone(formatar_data_hora_brasilia("não é uma data"))
 
 
 class TestPrefixarAutorTiflux(unittest.TestCase):
     def test_com_nome_e_data(self):
-        resultado = _prefixar_autor_tiflux("José Augusto", "2026-09-09T14:10:26Z", "conteúdo")
+        resultado = prefixar_autor_tiflux("José Augusto", "2026-09-09T14:10:26Z", "conteúdo")
         self.assertEqual(resultado, "<strong>José Augusto</strong> (09/09/2026 11:10)<br><br>conteúdo")
 
     def test_sem_nome_usa_desconhecido(self):
-        resultado = _prefixar_autor_tiflux(None, "2026-09-09T14:10:26Z", "conteúdo")
+        resultado = prefixar_autor_tiflux(None, "2026-09-09T14:10:26Z", "conteúdo")
         self.assertTrue(resultado.startswith("<strong>Desconhecido</strong>"))
 
     def test_sem_data_omite_parenteses(self):
-        resultado = _prefixar_autor_tiflux("José Augusto", None, "conteúdo")
+        resultado = prefixar_autor_tiflux("José Augusto", None, "conteúdo")
         self.assertEqual(resultado, "<strong>José Augusto</strong><br><br>conteúdo")
 
 

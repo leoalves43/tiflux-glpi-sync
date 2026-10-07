@@ -204,7 +204,7 @@ def _atribuir_tecnico_glpi(glpi: GlpiClient, id_chamado: int, config: Config, ti
     Atribui um técnico responsável no GLPI (mesma regra de definir_autor_glpi:
     sempre Léo, independente da mesa) — pré-requisito dessa instalação do
     GLPI pra aceitar status Solucionado/Fechado mais tarde (ver encerramento
-    em cascata em sincronizacao_followups.py). Falha aqui não derruba a
+    em cascata em cascata_status.py). Falha aqui não derruba a
     sincronização, mesmo motivo do título: reprocessar duplicaria o ticket
     no Tiflux.
     """

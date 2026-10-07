@@ -294,8 +294,8 @@ class TifluxClient:
         PUT /tickets/{ticket_number}/reopen. Usado quando o chamado volta a
         ficar aberto no GLPI (ex.: requerente recusa a solução) enquanto o
         ticket correspondente no Tiflux segue fechado por um encerramento em
-        cascata anterior — ver _reabrir_tiflux_apos_recusa_glpi em
-        sincronizacao_followups.py. Um ticket "pendente de revisão" no Tiflux
+        cascata anterior — ver reabrir_tiflux_apos_recusa_glpi em
+        cascata_status.py. Um ticket "pendente de revisão" no Tiflux
         só reabre por reprovação, o que exige `disapproval_reason` no corpo
         (confirmado ao vivo: sem esse atributo a API recusa com 422
         error_code 42207 "does not meet the required conditions"); tickets

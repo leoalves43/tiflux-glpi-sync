@@ -1,5 +1,5 @@
 """Duplos de teste para GlpiClient/TifluxClient — implementam a mesma interface
-pública usada por sync.processamento_chamado e sync.sincronizacao_followups,
+pública usada por sync.processamento_chamado e pelos módulos de followups,
 sem depender de HTTP real."""
 
 

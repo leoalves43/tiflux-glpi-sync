@@ -2,7 +2,7 @@ import unittest
 
 from sync.config import Config
 from sync.encerrar_legado import encerrar_legado, motivo_recusa
-from sync.sincronizacao_followups import STATUS_GLPI_SOLUCIONADO
+from sync.cascata_status import STATUS_GLPI_SOLUCIONADO
 from tests.fake_clients import FakeGlpiClient, FakeTifluxClient
 from tests.fakes import FakeConnection
 

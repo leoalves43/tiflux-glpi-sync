@@ -22,7 +22,7 @@ def obter_chamados_com_mudanca_de_status(
     """
     Pares (id_glpi, numero_tiflux) cujo status no Tiflux diverge da última
     ação de cascata registrada. Só lê — quem encerra/reabre é o fluxo normal
-    de sincronizacao_followups.
+    de sincronizacao_followups + cascata_status.
     Ex.: obter_chamados_com_mudanca_de_status(conn, config, tiflux, datetime.now(timezone.utc))
     """
     inicio = agora_utc - timedelta(minutes=config.janela_mudancas_status_tiflux_minutos)

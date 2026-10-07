@@ -21,7 +21,7 @@ de `test_sincronizacao_followups.py`), `docs/ARCHITECTURE.md`,
 - Nada irreversível; cada task é um commit revertível.
 
 ## Tasks
-- [ ] 1. Extrair `cascata_status.py` e `publicacao_followups.py`; atualizar
+- [x] 1. Extrair `cascata_status.py` e `publicacao_followups.py`; atualizar
       importadores (`main`, `encerrar_legado`, `forcar_sincronizacao`, testes).
       Done: testes verdes, arquivos < 500.
 - [ ] 2. Dividir `tests/test_sincronizacao_followups.py` por módulo (classes

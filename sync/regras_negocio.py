@@ -79,7 +79,7 @@ def definir_autor_glpi(config: Config) -> int:
     4988), independente da mesa — usuária da Sania foi inativada no GLPI.
     Usada em dois lugares:
     - Autoria (no GLPI) de um followup sincronizado do Tiflux
-      (sincronizacao_followups.py).
+      (publicacao_followups.py).
     - Técnico atribuído no GLPI (Ticket_User tipo 2) na hora de criar o
       chamado no Tiflux (processamento_chamado.py) — pré-requisito dessa
       instalação do GLPI pra aceitar status Solucionado/Fechado depois.
