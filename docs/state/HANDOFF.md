@@ -9,8 +9,8 @@ DONE (2026-10-07), 371 tests green (3.14 + 3.13), container rebuilt 16:57:
 NEXT:
 1. Spec 008 DONE (plan 008 all [x]): idle runs 3-5 Tiflux req, no "⏳"; e-mail answer on
    Tiflux #364678 -> GLPI #34900 followup 77906 via light path (17:27). Test ticket
-   GLPI #34900 / Tiflux #364678 still OPEN — close only when user asks (read state first).
-2. VPS deploy PAUSED by user — don't bring it up until asked.
+   GLPI #34900 / Tiflux #364678 still OPEN.
+2. User closes test ticket Tiflux #364678 in the UI -> expect GLPI #34900 Solucionado by cascade.
 
 RISKS:
 - `updated_at` bump verified for web + e-mail answers; attachment answers untested
