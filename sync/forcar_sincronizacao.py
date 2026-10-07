@@ -77,6 +77,11 @@ def main() -> None:
         conn.close()
         return
 
+    _autenticar_e_forcar(conn, config, id_glpi)
+
+
+def _autenticar_e_forcar(conn: ConexaoDb, config: Config, id_glpi: int) -> None:
+    """Já com o lock: autentica, força e sempre libera lock, sessão GLPI e conexão."""
     try:
         glpi = GlpiClient.autenticar(config)
     except Exception as e:
@@ -104,9 +109,9 @@ def _obter_lock(conn: ConexaoDb, id_glpi: int) -> bool:
     """
     Lock consultivo de sessão do Postgres — evita que duas execuções
     simultâneas (duplo clique, duas abas) forcem o mesmo chamado ao mesmo
-    tempo e dupliquem o ticket no Tiflux. NÃO protege contra a tarefa
-    agendada `GLPI-Tiflux-Sync` (roda a cada 5 min, lock próprio dela não
-    existe) processar o mesmo chamado em paralelo — só reduz a janela.
+    tempo e dupliquem o ticket no Tiflux. NÃO protege contra o loop do
+    container (docker/loop_sincronizacao.sh, sem lock próprio) processar o
+    mesmo chamado em paralelo — só reduz a janela.
     """
     with conn.cursor() as cur:
         cur.execute("SELECT pg_try_advisory_lock(hashtext(%s), %s)", (_CHAVE_LOCK, id_glpi))
@@ -141,14 +146,7 @@ def _forcar(conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxCli
 
 
 def _forcar_criacao(conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int) -> None:
-    numero_ja_existente = _numero_tiflux_no_titulo(glpi, id_glpi)
-    if numero_ja_existente:
-        _imprimir_resultado(
-            "recusado", numero_ja_existente,
-            f"Título do chamado #{id_glpi} no GLPI já está prefixado com #{numero_ja_existente} "
-            f"— o ticket no Tiflux provavelmente já existe, mas sem linha correspondente na "
-            f"auditoria. Reconcilie manualmente antes de forçar.",
-        )
+    if _recusar_titulo_ja_sincronizado(glpi, id_glpi):
         return
 
     status, numero_tiflux, mensagem = processar_chamado(glpi, tiflux, config, id_glpi)
@@ -168,6 +166,20 @@ def _forcar_criacao(conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: T
     _imprimir_resultado(status, numero_tiflux, mensagem)
 
 
+def _recusar_titulo_ja_sincronizado(glpi: GlpiClient, id_glpi: int) -> bool:
+    """Imprime a recusa e devolve True se o título no GLPI já tem o prefixo "#<número Tiflux> - "."""
+    numero_ja_existente = _numero_tiflux_no_titulo(glpi, id_glpi)
+    if not numero_ja_existente:
+        return False
+    _imprimir_resultado(
+        "recusado", numero_ja_existente,
+        f"Título do chamado #{id_glpi} no GLPI já está prefixado com #{numero_ja_existente} "
+        f"— o ticket no Tiflux provavelmente já existe, mas sem linha correspondente na "
+        f"auditoria. Reconcilie manualmente antes de forçar.",
+    )
+    return True
+
+
 def _numero_tiflux_no_titulo(glpi: GlpiClient, id_glpi: int) -> str | None:
     ticket, _ = glpi.obter_ticket(id_glpi)
     if ticket is None:
@@ -180,20 +192,7 @@ def _forcar_followups(
     conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
     numero_tiflux: NumeroTiflux,
 ) -> None:
-    ticket_glpi, status_code = glpi.obter_ticket(id_glpi)
-    if ticket_glpi is None:
-        _imprimir_resultado(
-            "erro", numero_tiflux,
-            f"Não foi possível conferir o chamado #{id_glpi} no GLPI (status {status_code}).",
-        )
-        return
-
-    if ticket_glpi.get("status") not in STATUS_GLPI_ABERTOS:
-        _imprimir_resultado(
-            "fechado", numero_tiflux,
-            f"Chamado #{id_glpi} está fechado no GLPI — nada a sincronizar "
-            f"(forçar não reabre chamados fechados; use a varredura normal do cron pra isso).",
-        )
+    if not _chamado_aberto_no_glpi(glpi, id_glpi, numero_tiflux):
         return
 
     sucesso_g2t, erro_g2t = sincronizar_followups_glpi_para_tiflux(conn, config, glpi, tiflux, id_glpi, numero_tiflux)
@@ -208,6 +207,26 @@ def _forcar_followups(
     status = "sucesso" if (erro_g2t == 0 and erro_t2g == 0) else "erro"
     log(f"[forçar #{id_glpi}] {mensagem}")
     _imprimir_resultado(status, numero_tiflux, mensagem)
+
+
+def _chamado_aberto_no_glpi(glpi: GlpiClient, id_glpi: int, numero_tiflux: NumeroTiflux) -> bool:
+    """Imprime o motivo e devolve False se o chamado não pôde ser conferido ou já está fechado no GLPI."""
+    ticket_glpi, status_code = glpi.obter_ticket(id_glpi)
+    if ticket_glpi is None:
+        _imprimir_resultado(
+            "erro", numero_tiflux,
+            f"Não foi possível conferir o chamado #{id_glpi} no GLPI (status {status_code}).",
+        )
+        return False
+
+    if ticket_glpi.get("status") not in STATUS_GLPI_ABERTOS:
+        _imprimir_resultado(
+            "fechado", numero_tiflux,
+            f"Chamado #{id_glpi} está fechado no GLPI — nada a sincronizar "
+            f"(forçar não reabre chamados fechados; use a varredura normal do cron pra isso).",
+        )
+        return False
+    return True
 
 
 def _imprimir_resultado(status: str, numero_tiflux: NumeroTiflux | None, mensagem: str) -> None:

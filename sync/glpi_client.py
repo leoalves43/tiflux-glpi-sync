@@ -118,25 +118,10 @@ class GlpiClient:
         chegou no fim dos criados até agora), ou ao atingir limite_por_execucao
         chamados encontrados.
         """
-        encontrados: list[int] = []
-        id_atual = id_inicial
-        furos_seguidos = 0
-
         with concurrent.futures.ThreadPoolExecutor(max_workers=self._tamanho_lote_sondagem) as executor:
-            while furos_seguidos < max_furos_seguidos and len(encontrados) < limite_por_execucao:
-                tamanho_lote = min(
-                    self._tamanho_lote_sondagem,
-                    max_furos_seguidos - furos_seguidos,
-                    limite_por_execucao - len(encontrados),
-                )
-                ids_lote = list(range(id_atual, id_atual + tamanho_lote))
-                for id_chamado, existe in zip(ids_lote, executor.map(self._chamado_existe, ids_lote)):
-                    if existe:
-                        encontrados.append(id_chamado)
-                        furos_seguidos = 0
-                    else:
-                        furos_seguidos += 1
-                    id_atual = id_chamado + 1
+            encontrados, id_atual, furos_seguidos = self._sondar_em_lotes(
+                executor, id_inicial, limite_por_execucao, max_furos_seguidos,
+            )
 
         if furos_seguidos >= max_furos_seguidos:
             log(f"🔎 Sondagem parou após {max_furos_seguidos} IDs seguidos sem chamado "
@@ -144,6 +129,30 @@ class GlpiClient:
 
         log(f"🔎 Sondagem de #{id_inicial} até #{id_atual - 1}: {len(encontrados)} chamado(s) encontrado(s)")
         return encontrados
+
+    def _sondar_em_lotes(
+        self, executor: concurrent.futures.ThreadPoolExecutor, id_inicial: int, limite_por_execucao: int,
+        max_furos_seguidos: int,
+    ) -> tuple[list[int], int, int]:
+        """(ids encontrados, próximo id a sondar, furos seguidos ao parar) — ver buscar_chamados_desde."""
+        encontrados: list[int] = []
+        id_atual = id_inicial
+        furos_seguidos = 0
+        while furos_seguidos < max_furos_seguidos and len(encontrados) < limite_por_execucao:
+            tamanho_lote = min(
+                self._tamanho_lote_sondagem,
+                max_furos_seguidos - furos_seguidos,
+                limite_por_execucao - len(encontrados),
+            )
+            ids_lote = list(range(id_atual, id_atual + tamanho_lote))
+            for id_chamado, existe in zip(ids_lote, executor.map(self._chamado_existe, ids_lote)):
+                if existe:
+                    encontrados.append(id_chamado)
+                    furos_seguidos = 0
+                else:
+                    furos_seguidos += 1
+                id_atual = id_chamado + 1
+        return encontrados, id_atual, furos_seguidos
 
     def _chamado_existe(self, id_chamado: int) -> bool:
         resp = self._get(f"/Ticket/{id_chamado}")
@@ -444,14 +453,10 @@ class GlpiClient:
         return anexos, avisos
 
     def _baixar_documento(self, doc_id: int, tamanho_maximo_mb: int, anexos: list[Anexo], avisos: list[str]) -> None:
-        resp_doc = self._get(f"/Document/{doc_id}")
-        if resp_doc.status_code not in (200, 206):
-            avisos.append(f"Documento {doc_id}: falha ao obter metadados (status {resp_doc.status_code})")
+        metadados = self._metadados_documento(doc_id, avisos)
+        if metadados is None:
             return
-
-        meta = resp_doc.json()
-        nome_arquivo = meta.get("filename") or meta.get("name") or f"arquivo_{doc_id}"
-        mime = meta.get("mime") or "application/octet-stream"
+        nome_arquivo, mime = metadados
 
         resp_bin = self._get(f"/Document/{doc_id}", params={"alt": "media"})
         if resp_bin.status_code not in (200, 206):
@@ -465,6 +470,16 @@ class GlpiClient:
             return
 
         anexos.append((nome_arquivo, resp_bin.content, mime))
+
+    def _metadados_documento(self, doc_id: int, avisos: list[str]) -> tuple[str, str] | None:
+        """(nome do arquivo, mime) do Document; None (com aviso) se o GLPI não devolveu os metadados."""
+        resp_doc = self._get(f"/Document/{doc_id}")
+        if resp_doc.status_code not in (200, 206):
+            avisos.append(f"Documento {doc_id}: falha ao obter metadados (status {resp_doc.status_code})")
+            return None
+        meta = resp_doc.json()
+        nome_arquivo = meta.get("filename") or meta.get("name") or f"arquivo_{doc_id}"
+        return nome_arquivo, meta.get("mime") or "application/octet-stream"
 
 
 def _formatar_nome_usuario(dados_usuario: dict) -> str:

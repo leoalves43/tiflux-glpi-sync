@@ -24,6 +24,22 @@ def _campos_anexos(anexos: list[Anexo] | None) -> list[tuple]:
     return [("files[]", (nome, conteudo, mime)) for nome, conteudo, mime in (anexos or [])]
 
 
+def _cabecalhos_tiflux(token: str) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    """
+    (json, form, get). O de GET nunca leva Content-Type: application/json — o
+    Rails (usado pelo Tiflux) faz o "param wrapping" do corpo (mesmo vazio)
+    dentro de uma chave com o nome singular do recurso (ex: "requestor"), e como
+    a action de busca (index) não espera esse parâmetro, a API responde 400
+    "unpermitted parameter".
+    Ex.: _cabecalhos_tiflux("abc")[2] -> {"accept": "application/json", "Authorization": "Bearer abc"}
+    """
+    autorizacao = f"Bearer {token}"
+    json_ = {"accept": "application/json", "Content-Type": "application/json", "Authorization": autorizacao}
+    form = {"accept": "application/json", "Authorization": autorizacao}
+    get = {"accept": "application/json", "Authorization": autorizacao}
+    return json_, form, get
+
+
 class TifluxClient:
     """Wraps chamadas à API do Tiflux. Uma instância por execução do cron."""
 
@@ -40,24 +56,7 @@ class TifluxClient:
         # a conexão TCP/TLS com o Tiflux (keep-alive) em vez de renegociar uma
         # nova a cada request. Ver docs/decisions/LOG.md.
         self._session = session if session is not None else requests.Session()
-
-        self._headers_json = {
-            "accept": "application/json",
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
-        }
-        self._headers_form = {
-            "accept": "application/json",
-            "Authorization": f"Bearer {token}",
-        }
-        # Para requisições GET sem corpo. IMPORTANTE: nunca mandar Content-Type: application/json
-        # num GET sem body — o Rails (usado pelo Tiflux) faz o "param wrapping" do corpo (mesmo vazio)
-        # dentro de uma chave com o nome singular do recurso (ex: "requestor"), e como a action de
-        # busca (index) não espera esse parâmetro, a API responde 400 "unpermitted parameter".
-        self._headers_get = {
-            "accept": "application/json",
-            "Authorization": f"Bearer {token}",
-        }
+        self._headers_json, self._headers_form, self._headers_get = _cabecalhos_tiflux(token)
 
     @property
     def cliente_id(self) -> int:
@@ -273,22 +272,28 @@ class TifluxClient:
 
         for i in range(0, len(anexos), 10):
             lote = anexos[i:i + 10]
-            arquivos_form = [("files[]", (nome, conteudo, mime)) for nome, conteudo, mime in lote]
-            # headers_get só tem Accept + Authorization — sem Content-Type,
-            # pra deixar o requests montar o multipart/form-data com o boundary certo.
-            resp = self._session.post(
-                f"{self._url_base}/tickets/{ticket_number}/files",
-                files=arquivos_form,
-                headers=self._headers_get,
-                timeout=self._timeout,
-            )
-            if resp.status_code in (200, 201):
+            motivo = self._enviar_lote_anexos(ticket_number, lote, i // 10 + 1)
+            if motivo is None:
                 enviados += len(lote)
             else:
                 falhados += len(lote)
-                motivos.append(f"Lote {i // 10 + 1} ({resp.status_code}): {resp.text}")
+                motivos.append(motivo)
 
         return enviados, falhados, motivos
+
+    def _enviar_lote_anexos(self, ticket_number: NumeroTiflux, lote: list[Anexo], numero_lote: int) -> str | None:
+        """None se o lote subiu; senão o motivo da falha (ex.: "Lote 2 (500): ...")."""
+        # headers_get só tem Accept + Authorization — sem Content-Type,
+        # pra deixar o requests montar o multipart/form-data com o boundary certo.
+        resp = self._session.post(
+            f"{self._url_base}/tickets/{ticket_number}/files",
+            files=_campos_anexos(lote),
+            headers=self._headers_get,
+            timeout=self._timeout,
+        )
+        if resp.status_code in (200, 201):
+            return None
+        return f"Lote {numero_lote} ({resp.status_code}): {resp.text}"
 
     def reabrir_ticket(self, ticket_number: NumeroTiflux, motivo_reprovacao: str) -> tuple[bool, str | None]:
         """
@@ -381,25 +386,20 @@ class TifluxClient:
         deslocamento de linha — ver doc da API) e retorna todos os itens.
         """
         itens: list[dict] = []
-        pagina = 1
-        while pagina <= max_paginas:
-            resp = self._session.get(
-                url,
-                params={**params, "offset": pagina, "limit": tamanho_pagina},
-                headers=self._headers_get,
-                timeout=self._timeout,
-            )
-            if resp.status_code != 200:
-                log(f"⚠️ Falha ao listar {descricao} (status {resp.status_code}): {resp.text}")
+        for pagina in range(1, max_paginas + 1):
+            pagina_itens = self._obter_pagina(url, {**params, "offset": pagina, "limit": tamanho_pagina}, descricao)
+            if not pagina_itens:
                 break
-
-            pagina_itens = resp.json()
-            if not isinstance(pagina_itens, list) or not pagina_itens:
-                break
-
             itens.extend(pagina_itens)
             if len(pagina_itens) < tamanho_pagina:
                 break
-            pagina += 1
-
         return itens
+
+    def _obter_pagina(self, url: str, params: dict[str, str | int], descricao: str) -> list[dict]:
+        """Itens de uma página; lista vazia (fim da paginação) em falha HTTP ou corpo que não é lista."""
+        resp = self._session.get(url, params=params, headers=self._headers_get, timeout=self._timeout)
+        if resp.status_code != 200:
+            log(f"⚠️ Falha ao listar {descricao} (status {resp.status_code}): {resp.text}")
+            return []
+        pagina_itens = resp.json()
+        return pagina_itens if isinstance(pagina_itens, list) else []

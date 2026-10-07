@@ -1,6 +1,7 @@
 """Processamento de um único chamado do GLPI: tradução e criação no Tiflux."""
 
 import html
+from dataclasses import dataclass
 
 import requests
 
@@ -51,6 +52,18 @@ def processar_chamado(glpi: GlpiClient, tiflux: TifluxClient, config: Config, id
         return "erro", None, f"Erro inesperado: {e}"
 
 
+@dataclass(frozen=True)
+class _TicketPlanejado:
+    """Decisões tomadas antes de criar o ticket no Tiflux (mesa, prioridade, técnico, solicitante, formulário)."""
+
+    mesa: int
+    id_prioridade: int
+    id_tecnico: int | None
+    nome_tecnico: str | None
+    info_solicitante: str
+    form_data: dict[str, str]
+
+
 def _processar(glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_chamado: int) -> ResultadoChamado:
     _validar_escopo(glpi, config, id_chamado)
     ticket = _buscar_ticket(glpi, id_chamado)
@@ -59,34 +72,54 @@ def _processar(glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_chamad
     if numero_existente is not None:
         return _vincular_ticket_existente(glpi, id_chamado, ticket, numero_existente)
 
+    planejado = _planejar_ticket_tiflux(glpi, tiflux, config, id_chamado, ticket)
+    ticket_number_tiflux = _criar_ticket(tiflux, planejado.form_data)
+    if planejado.id_tecnico is not None:
+        _atribuir_tecnico(tiflux, ticket_number_tiflux, planejado.id_tecnico, planejado.nome_tecnico)
+    avisos = _completar_apos_criacao(glpi, tiflux, config, id_chamado, ticket, ticket_number_tiflux)
+    return "sucesso", ticket_number_tiflux, _mensagem_criacao(planejado, ticket_number_tiflux, avisos)
+
+
+def _planejar_ticket_tiflux(
+    glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_chamado: int, ticket: dict,
+) -> _TicketPlanejado:
+    # Ordem das chamadas mantida: o solicitante é cadastrado/atualizado no
+    # Tiflux (obter_id_solicitante) antes de montar o formulário.
     mesa_tiflux = _resolver_mesa(ticket, tiflux)
     id_prioridade_tiflux = _resolver_prioridade(mesa_tiflux)
-
     nome_solicitante, email_solicitante, _ = glpi.obter_requerente(id_chamado, ticket)
     id_tecnico_tiflux, nome_tecnico_tiflux = definir_tecnico(mesa_tiflux, config)
     telefone_solicitante = telefone_para_tiflux(glpi.obter_telefone_chamado(id_chamado))
     id_solicitante_tiflux, info_solicitante_tiflux = tiflux.obter_id_solicitante(
         nome_solicitante, email_solicitante, telefone_solicitante,
     )
-
     form_data = _montar_form_data(
         ticket, config, mesa_tiflux, id_prioridade_tiflux,
         id_solicitante_tiflux, nome_solicitante, email_solicitante, id_chamado,
     )
-    ticket_number_tiflux = _criar_ticket(tiflux, form_data)
-    if id_tecnico_tiflux is not None:
-        _atribuir_tecnico(tiflux, ticket_number_tiflux, id_tecnico_tiflux, nome_tecnico_tiflux)
+    return _TicketPlanejado(
+        mesa_tiflux, id_prioridade_tiflux, id_tecnico_tiflux, nome_tecnico_tiflux, info_solicitante_tiflux, form_data,
+    )
+
+
+def _completar_apos_criacao(
+    glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_chamado: int, ticket: dict, ticket_number_tiflux: str,
+) -> str:
+    """Passos pós-criação que não derrubam o chamado; devolve os avisos na ordem do log (anexos primeiro)."""
     aviso_titulo = _atualizar_titulo_glpi(glpi, id_chamado, ticket.get("name"), ticket_number_tiflux)
     aviso_tecnico_glpi = _atribuir_tecnico_glpi(glpi, id_chamado, config, ticket_number_tiflux)
     aviso_status_glpi = _restaurar_status_novo_glpi(glpi, id_chamado, ticket_number_tiflux)
     resumo_anexos = _sincronizar_anexos(glpi, tiflux, config, id_chamado, ticket_number_tiflux)
+    return f"{resumo_anexos}{aviso_titulo}{aviso_tecnico_glpi}{aviso_status_glpi}"
 
-    texto_tecnico = f"Técnico {nome_tecnico_tiflux}" if nome_tecnico_tiflux else "Sem técnico atribuído"
-    msg = (f"Ticket #{ticket_number_tiflux} criado no Tiflux | Mesa {mesa_tiflux} | "
-           f"Prioridade ID {id_prioridade_tiflux} | "
-           f"{texto_tecnico} | Solicitante {info_solicitante_tiflux}"
-           f"{resumo_anexos}{aviso_titulo}{aviso_tecnico_glpi}{aviso_status_glpi}")
-    return "sucesso", ticket_number_tiflux, msg
+
+def _mensagem_criacao(planejado: _TicketPlanejado, ticket_number_tiflux: str, avisos: str) -> str:
+    """Ex.: "Ticket #364569 criado no Tiflux | Mesa 37963 | Prioridade ID 120547 | Sem técnico atribuído | Solicitante X" """
+    texto_tecnico = f"Técnico {planejado.nome_tecnico}" if planejado.nome_tecnico else "Sem técnico atribuído"
+    return (f"Ticket #{ticket_number_tiflux} criado no Tiflux | Mesa {planejado.mesa} | "
+            f"Prioridade ID {planejado.id_prioridade} | "
+            f"{texto_tecnico} | Solicitante {planejado.info_solicitante}"
+            f"{avisos}")
 
 
 def _validar_escopo(glpi: GlpiClient, config: Config, id_chamado: int) -> None:
@@ -245,19 +278,9 @@ def _montar_form_data(
     ticket: dict, config: Config, mesa_tiflux: int, id_prioridade_tiflux: int, id_solicitante_tiflux: int,
     nome_solicitante: str, email_solicitante: str | None, id_chamado: int,
 ) -> dict[str, str]:
-    titulo_glpi = ticket.get("name")
-
-    titulo_tiflux = f"{titulo_glpi} ({id_chamado})"
-    cabecalho_personalizado = cabecalho_prioridade_glpi(ticket.get("priority"))
-    info_solicitante_texto = f"Solicitante: {nome_solicitante} <{email_solicitante or 'Sem e-mail'}>"
-    descricao_glpi_texto = html_para_texto_plano(ticket.get("content"))
-    descricao_texto = (f"{cabecalho_personalizado}\n\n{info_solicitante_texto}\n\n"
-                       f"Descrição:\n{descricao_glpi_texto}")
-    descricao_tiflux = texto_para_html_tiflux(descricao_texto)
-
     return {
-        "title": titulo_tiflux,
-        "description": descricao_tiflux,
+        "title": f"{ticket.get('name')} ({id_chamado})",
+        "description": _descricao_tiflux(ticket, nome_solicitante, email_solicitante),
         "client_id": str(config.cliente_tiflux_id),
         "desk_id": str(mesa_tiflux),
         "requestor_id": str(id_solicitante_tiflux),
@@ -269,6 +292,16 @@ def _montar_form_data(
         "entities[][entity_field_id]": str(config.id_campo_modulo_utilizado_tiflux),
         "entities[][value]": str(config.id_opcao_modulo_utilizado_padrao_tiflux),
     }
+
+
+def _descricao_tiflux(ticket: dict, nome_solicitante: str, email_solicitante: str | None) -> str:
+    """Cabeçalho de prioridade + solicitante + descrição do GLPI em texto, já convertido pro HTML que o Tiflux renderiza."""
+    cabecalho_personalizado = cabecalho_prioridade_glpi(ticket.get("priority"))
+    info_solicitante_texto = f"Solicitante: {nome_solicitante} <{email_solicitante or 'Sem e-mail'}>"
+    descricao_glpi_texto = html_para_texto_plano(ticket.get("content"))
+    descricao_texto = (f"{cabecalho_personalizado}\n\n{info_solicitante_texto}\n\n"
+                       f"Descrição:\n{descricao_glpi_texto}")
+    return texto_para_html_tiflux(descricao_texto)
 
 
 def _sincronizar_anexos(

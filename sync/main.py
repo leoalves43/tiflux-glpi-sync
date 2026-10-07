@@ -1,6 +1,7 @@
 """Ponto de entrada da sincronização GLPI -> Tiflux. Ver docs/ARCHITECTURE.md."""
 
 import sys
+from collections import Counter
 
 from sync import db_chamados
 from sync.config import Config, log
@@ -14,20 +15,8 @@ from sync.tipos import ConexaoDb
 def main() -> None:
     log("Iniciando sincronização GLPI -> Tiflux")
     config = Config.carregar()
-
-    try:
-        conn = db_chamados.conectar_db(config)
-    except Exception as e:
-        log(f"❌ Não foi possível conectar ao Postgres: {e}")
-        sys.exit(1)
-
-    try:
-        glpi = GlpiClient.autenticar(config)
-    except Exception as e:
-        log(f"❌ Não foi possível autenticar no GLPI: {e}")
-        conn.close()
-        sys.exit(1)
-
+    conn = _conectar_db_ou_sair(config)
+    glpi = _autenticar_glpi_ou_sair(config, conn)
     tiflux = TifluxClient.conectar(config)
 
     try:
@@ -42,6 +31,23 @@ def main() -> None:
         conn.close()
 
 
+def _conectar_db_ou_sair(config: Config) -> ConexaoDb:
+    try:
+        return db_chamados.conectar_db(config)
+    except Exception as e:
+        log(f"❌ Não foi possível conectar ao Postgres: {e}")
+        sys.exit(1)
+
+
+def _autenticar_glpi_ou_sair(config: Config, conn: ConexaoDb) -> GlpiClient:
+    try:
+        return GlpiClient.autenticar(config)
+    except Exception as e:
+        log(f"❌ Não foi possível autenticar no GLPI: {e}")
+        conn.close()
+        sys.exit(1)
+
+
 def _processar_chamados_pendentes(conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient) -> None:
     candidatos = _levantar_candidatos(conn, config, glpi)
     if not candidatos:
@@ -49,25 +55,32 @@ def _processar_chamados_pendentes(conn: ConexaoDb, config: Config, glpi: GlpiCli
         return
 
     log(f"{len(candidatos)} chamado(s) para processar: {candidatos}")
-    total_sucesso = total_ignorado = total_erro = 0
-
+    totais: Counter[str] = Counter()
     for id_chamado in candidatos:
         status, numero_tiflux, mensagem = processar_chamado(glpi, tiflux, config, id_chamado)
+        totais[_registrar_processamento(conn, config, id_chamado, status, numero_tiflux, mensagem)] += 1
 
-        if status == "sucesso":
-            total_sucesso += 1
-            db_chamados.registrar_resultado(conn, config, id_chamado, numero_tiflux, status, mensagem)
-            log(f"✅ Chamado #{id_chamado}: {mensagem}")
-        elif status == "ignorado":
-            total_ignorado += 1
-            # Não interessa: nem grava na auditoria, nem loga por chamado —
-            # só entra na contagem final abaixo.
-        else:
-            total_erro += 1
-            db_chamados.registrar_resultado(conn, config, id_chamado, numero_tiflux, status, mensagem)
-            log(f"❌ Chamado #{id_chamado}: {mensagem}")
+    log(f"Finalizado. Sucesso: {totais['sucesso']} | Ignorado: {totais['ignorado']} | Erro: {totais['erro']}")
 
-    log(f"Finalizado. Sucesso: {total_sucesso} | Ignorado: {total_ignorado} | Erro: {total_erro}")
+
+def _registrar_processamento(
+    conn: ConexaoDb, config: Config, id_chamado: int, status: str, numero_tiflux: str | None, mensagem: str,
+) -> str:
+    """
+    Grava/loga o resultado de um chamado e devolve a categoria da contagem
+    final ('sucesso', 'ignorado' ou 'erro' — qualquer outro status conta como erro).
+    Ex.: _registrar_processamento(conn, config, 34865, "sucesso", "364569", "Ticket ...") -> "sucesso"
+    """
+    if status == "ignorado":
+        # Não interessa: nem grava na auditoria, nem loga por chamado —
+        # só entra na contagem final.
+        return "ignorado"
+    db_chamados.registrar_resultado(conn, config, id_chamado, numero_tiflux, status, mensagem)
+    if status == "sucesso":
+        log(f"✅ Chamado #{id_chamado}: {mensagem}")
+        return "sucesso"
+    log(f"❌ Chamado #{id_chamado}: {mensagem}")
+    return "erro"
 
 
 def _levantar_candidatos(conn: ConexaoDb, config: Config, glpi: GlpiClient) -> list[int]:

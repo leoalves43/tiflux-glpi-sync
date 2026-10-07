@@ -41,7 +41,7 @@ def sincronizar_followups(
     placar = PlacarFollowups()
     for id_glpi, numero_tiflux in chamados:
         if numero_tiflux:
-            _sincronizar_chamado_aberto(conn, config, glpi, tiflux, id_glpi, numero_tiflux, placar)
+            _sincronizar_chamado(conn, config, glpi, tiflux, id_glpi, numero_tiflux, placar)
 
     log(placar.resumo())
 
@@ -52,7 +52,7 @@ def _juntar_sem_repetir(primeiros: list[tuple[int, int]], demais: list[tuple[int
     return primeiros + [par for par in demais if par[0] not in ja_incluidos]
 
 
-def _sincronizar_chamado_aberto(
+def _sincronizar_chamado(
     conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
     numero_tiflux: NumeroTiflux, placar: PlacarFollowups,
 ) -> None:
@@ -67,7 +67,13 @@ def _sincronizar_chamado_aberto(
     if ticket_glpi.get("status") not in STATUS_GLPI_ABERTOS:
         tratar_chamado_fechado_no_glpi(conn, config, glpi, id_glpi, numero_tiflux, ticket_glpi, ticket_tiflux, placar)
         return
+    _sincronizar_chamado_aberto_no_glpi(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_tiflux, placar)
 
+
+def _sincronizar_chamado_aberto_no_glpi(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
+    numero_tiflux: NumeroTiflux, ticket_tiflux: dict | None, placar: PlacarFollowups,
+) -> None:
     if recusa_glpi_pendente(conn, config, id_glpi, ticket_tiflux):
         if not reabrir_tiflux_apos_recusa_glpi(conn, config, tiflux, id_glpi, numero_tiflux, placar):
             # Tiflux segue fechado: publicar followups daria 422 e o

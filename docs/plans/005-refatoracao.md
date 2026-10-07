@@ -29,7 +29,7 @@ de `test_sincronizacao_followups.py`), `docs/ARCHITECTURE.md`,
 - [x] 3. `PlacarFollowups` no lugar do dict `totais`. Done: verdes; log igual.
 - [x] 4. Tipos: alias `ConexaoDb`, `NumeroTiflux = int | str`, `-> None` em
       `__init__`/handlers. Done: verdes; script AST sem parâmetro sem tipo.
-- [ ] 5. Funções > 20 linhas: `processamento_chamado._processar`,
+- [x] 5. Funções > 20 linhas: `processamento_chamado._processar`,
       `_montar_form_data`, `forcar_sincronizacao` (`main`, `_forcar_*`),
       `main.main`/`_processar_chamados_pendentes`, `glpi_client`
       (`buscar_chamados_desde`, `_baixar_documento`), `tiflux_client`

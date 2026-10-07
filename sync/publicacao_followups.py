@@ -138,30 +138,32 @@ def _enviar_anexos_excedentes(
 
 def _registrar_publicacao_no_tiflux(
     conn: ConexaoDb, config: Config, id_chamado: int, numero_tiflux: NumeroTiflux, tipo: str, id_origem: int,
-    resp: requests.Response, avisos_anexos: list,
+    resp: requests.Response, avisos_anexos: list[str],
 ) -> bool:
-    if resp.status_code not in (200, 201):
-        db_followups.registrar_resultado_followup(
-            conn, config, id_chamado, numero_tiflux, "glpi_para_tiflux", tipo, id_origem, None,
-            "erro", f"Falha ao publicar followup no Tiflux ({resp.status_code}): {resp.text}",
-        )
-        return False
+    id_destino, mensagem = _interpretar_publicacao_no_tiflux(resp, id_origem, avisos_anexos)
+    status = "sucesso" if id_destino else "erro"
+    db_followups.registrar_resultado_followup(
+        conn, config, id_chamado, numero_tiflux, "glpi_para_tiflux", tipo, id_origem, id_destino or None, status, mensagem,
+    )
+    return status == "sucesso"
 
+
+def _interpretar_publicacao_no_tiflux(
+    resp: requests.Response, id_origem: int, avisos_anexos: list[str],
+) -> tuple[int | None, str]:
+    """
+    (id da resposta criada no Tiflux ou None, mensagem da auditoria).
+    Ex.: _interpretar_publicacao_no_tiflux(resp_201_id_9, 77817, []) -> (9, "Followup GLPI #77817 publicado no Tiflux (id 9)")
+    """
+    if resp.status_code not in (200, 201):
+        return None, f"Falha ao publicar followup no Tiflux ({resp.status_code}): {resp.text}"
     id_destino = resp.json().get("id")
     if not id_destino:
-        db_followups.registrar_resultado_followup(
-            conn, config, id_chamado, numero_tiflux, "glpi_para_tiflux", tipo, id_origem, None,
-            "erro", "Followup publicado no Tiflux, mas não foi possível identificar o id na resposta",
-        )
-        return False
-
+        return None, "Followup publicado no Tiflux, mas não foi possível identificar o id na resposta"
     mensagem = f"Followup GLPI #{id_origem} publicado no Tiflux (id {id_destino})"
     if avisos_anexos:
         mensagem += f" | Avisos anexos: {'; '.join(avisos_anexos)}"
-    db_followups.registrar_resultado_followup(
-        conn, config, id_chamado, numero_tiflux, "glpi_para_tiflux", tipo, id_origem, id_destino, "sucesso", mensagem,
-    )
-    return True
+    return id_destino, mensagem
 
 
 def sincronizar_followups_tiflux_para_glpi(
