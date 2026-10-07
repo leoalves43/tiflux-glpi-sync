@@ -1,9 +1,9 @@
 # Handoff
 
-DONE (2026-10-07), local container rebuilt, 277 tests green:
+DONE (2026-10-07), local container rebuilt, 280 tests green:
 - Spec/plan 003: all GLPI-open tickets scanned every run + 50 closed; loop 120 s.
 - Spec/plan 004: failed Tiflux reopen after GLPI refusal keeps GLPI open,
-  logs a warning and retries every run (was re-closing GLPI, #34759).
+  logs, retries every run; GLPI Solucionado scanned every run (#34759).
 
 NEXT:
 1. Tiflux #364160 needs reopening: API + user both get 403 on fully closed;
