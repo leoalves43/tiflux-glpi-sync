@@ -12,9 +12,10 @@ NEXT:
 2. "⏳ Limite" lines are normal (a run uses ~120+ req/min); repeated 429
    failures are not. Restart the container between runs, not during one.
 3. VPS deploy PAUSED by user (2026-10-07) — don't bring it up until asked.
+4. Refactor 005 in prod: Tiflux->GLPI followup write OK (14:41); ticket create
+   + cascade write still unconfirmed.
 
 RISKS:
-- 120 s loop ≈ 2.5x GLPI requests; `INTERVALO_SEGUNDOS=300` reverts. Tiflux pacing may stretch a run past 1 min.
-- If VPS resumes: GLPI 302s its IP; two schedulers = duplicates + shared quota.
+- 120 s loop ≈ 2.5x GLPI requests (`INTERVALO_SEGUNDOS=300` reverts); VPS resume = GLPI 302 + duplicates.
 
 CONTEXT: specs/003-007, decisions/LOG.md 2026-10-07.
