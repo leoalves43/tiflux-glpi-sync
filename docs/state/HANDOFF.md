@@ -7,8 +7,8 @@ DONE (2026-10-07), local container rebuilt, 324 tests green (3.14 + 3.13):
 - Spec 007: Tiflux calls honor RateLimit headers and retry 429.
 
 NEXT:
-1. Next GLPI refusal: Tiflux should reopen and keep the técnico
-   ("atribuído de novo" in the log = Tiflux dropped it).
+0. PUSH PENDING: `git push origin main` got GitHub 500 x3 (2026-10-07 13:57).
+1. Next GLPI refusal: Tiflux reopens + keeps técnico ("atribuído de novo" = it didn't).
 2. "⏳ Limite" lines are normal (a run uses ~120+ req/min); repeated 429
    failures are not. Restart the container between runs, not during one.
 3. VPS deploy PAUSED by user (2026-10-07) — don't bring it up until asked.
