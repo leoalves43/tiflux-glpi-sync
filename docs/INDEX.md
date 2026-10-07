@@ -18,6 +18,7 @@
 - `docs/specs/007-limite-requisicoes-tiflux.md` — read when touching Tiflux HTTP calls, 429s or request pacing.
 - `docs/plans/007-limite-requisicoes-tiflux.md` — read with the spec above; task checklist.
 - `docs/specs/008-sincronizacao-por-mudancas-tiflux.md` — read when changing which tickets are read from Tiflux each run (change-driven sync).
+- `docs/plans/008-sincronizacao-por-mudancas-tiflux.md` — read with the spec above; task checklist.
 - `docs/data/audit_tables.toon` — read when writing SQL against either audit table (column names, types, conflict keys).
 
 No other docs exist. A path not listed above does not exist — don't assume it.
