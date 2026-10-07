@@ -139,6 +139,7 @@ class FakeTifluxClient:
         self.listagens_com_falha = 0
         # Simula listar_respostas com falha: devolve [] e conta, como o cliente real.
         self.falhar_listagem_respostas = False
+        self.requisicoes_enviadas = 0
 
     def validar_mesa_do_cliente(self, id_mesa):
         return True if self.mesas_validas is None else id_mesa in self.mesas_validas

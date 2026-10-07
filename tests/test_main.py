@@ -5,7 +5,7 @@ import io
 import unittest
 
 from sync.config import Config
-from sync.main import _sincronizar_followups_com_panorama
+from sync.main import _sincronizar_followups_com_panorama, resumo_requisicoes_tiflux
 from sync.tiflux_client import ListagemTifluxIncompleta
 from tests.fake_clients import FakeGlpiClient, FakeTifluxClient
 from tests.fakes import FakeConnection
@@ -33,6 +33,13 @@ class TestSincronizarFollowupsComPanorama(unittest.TestCase):
         conn = FakeConnection()  # checkpoint, varredura completa e rodízio vazios
         _sincronizar_followups_com_panorama(conn, _CONFIG, FakeGlpiClient(), FakeTifluxClient())
         self.assertIn("checkpoint_tiflux", conn.execucoes[-1][1])
+
+
+class TestResumoRequisicoesTiflux(unittest.TestCase):
+    def test_separa_criacao_de_followups(self):
+        self.assertEqual(
+            resumo_requisicoes_tiflux(4, 7), "📡 Requisições ao Tiflux: 7 (criação 4 + followups 3)",
+        )
 
 
 if __name__ == "__main__":

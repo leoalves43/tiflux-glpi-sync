@@ -116,6 +116,13 @@ class TestSessaoTifluxLimitada(unittest.TestCase):
         self.assertEqual(self.relogio.esperas, [33.0])
         self.assertEqual(http.chamadas, [("POST", "u1", {"json": {"a": 1}})] * 2)
 
+    def test_conta_cada_envio_incluindo_repeticoes_de_429(self):
+        sessao, _ = _sessao([_resposta(200), _resposta(429, restantes="0"), _resposta(200)], self.relogio)
+        with _sem_console():
+            sessao.get("u1")
+            sessao.post("u2")
+        self.assertEqual(sessao.requisicoes_enviadas, 3)
+
     def test_429_sem_reset_espera_60s(self):
         sessao, _ = _sessao([_resposta(429, restantes=None, reset=None), _resposta(200)], self.relogio)
         with _sem_console():

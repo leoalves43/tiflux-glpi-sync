@@ -79,6 +79,13 @@ class TifluxClient:
     def cliente_id(self) -> int:
         return self._cliente_id
 
+    @property
+    def requisicoes_enviadas(self) -> int:
+        """Requisições enviadas por esta instância; 0 se a sessão não conta (sessão crua, fora de conectar())."""
+        if isinstance(self._session, SessaoTifluxLimitada):
+            return self._session.requisicoes_enviadas
+        return 0
+
     @classmethod
     def conectar(cls, config: Config) -> "TifluxClient":
         sessao = SessaoTifluxLimitada(requests.Session(), config.reserva_requisicoes_tiflux)

@@ -38,17 +38,18 @@
   `status='prioritario'`; todos os prioritários entram na varredura completa da
   execução seguinte, além dos N normais. Mantém a retentativa a cada execução que o
   rodízio antigo dava (só linhas `sucesso` contam como processadas).
-- `SessaoTifluxLimitada` conta requisições; linha do placar ganha "Tiflux: N req".
+- `SessaoTifluxLimitada` conta requisições; `main` loga no fim "Requisições ao Tiflux: N
+  (criação A + followups B)".
 - Sem mudança de schema (`direcao` VARCHAR(20) comporta os dois valores novos).
 
 ## Files touched
 - `sync/tiflux_client.py`, `sync/limite_requisicoes_tiflux.py`, `sync/panorama_tiflux.py` (novo),
   `sync/mudancas_status_tiflux.py`, `sync/sincronizacao_followups.py`,
-  `sync/placar_followups.py`, `sync/db_followups.py`, `sync/config.py`, `sync/main.py`.
+  `sync/db_followups.py`, `sync/config.py`, `sync/main.py`.
 - `tests/fake_clients.py`, `tests/test_tiflux_client.py`, `tests/test_db_followups.py`,
   `tests/test_panorama_tiflux.py` (novo), `tests/test_mudancas_status_tiflux.py`,
   `tests/test_sincronizacao_followups.py`, `tests/test_limite_requisicoes_tiflux.py`,
-  `tests/test_placar_followups.py`, `tests/test_cascata_status.py`,
+  `tests/test_cascata_status.py`,
   `tests/test_recusa_glpi_sem_reabrir_tiflux.py` (passam um panorama de teste).
 - `tests/test_main.py` (novo: ligação panorama -> followups -> checkpoint).
 - `exemplo.env`, `docs/ARCHITECTURE.md`, `docs/data/audit_tables.toon`,
@@ -69,5 +70,5 @@
 - [x] 3. `panorama_tiflux.py` + `mudancas_status_tiflux` recebendo a listagem + `main` passa o panorama ao orquestrador + checkpoint + testes (crit. 5). Done: verde.
 - [x] 4. Caminhos completo/leve em `sincronizacao_followups` + avanço do checkpoint + testes dos crit. 1–4, 6–8. Done: verde, crit. 1 medido no fake (≤ 5 chamadas).
 - [x] 4b. Retentativa por chamado + marca de varredura mesmo em falha + checkpoint sem trava por chamado + testes. Done: verde.
-- [ ] 5. Contador de requisições na sessão + placar + testes. Done: verde.
-- [ ] 6. Rebuild do container; ARCHITECTURE, LOG, HANDOFF. Done: antes do rebuild, simulação só-leitura em produção conta quantos chamados exigem leitura individual; 3 execuções ociosas (sem chamado novo/retry) sem "⏳" com "Tiflux: ≤ 5 req"; resposta por e-mail no #364678 chega ao GLPI; encerrar #364678 pela tela do Tiflux (usuário, após conferir o estado) encerra o GLPI #34900 em cascata.
+- [x] 5. Contador de requisições na sessão + linha no `main` + testes. Done: verde.
+- [ ] 6. Rebuild do container; ARCHITECTURE, LOG, HANDOFF. Done: antes do rebuild, simulação só-leitura em produção conta quantos chamados exigem leitura individual; 3 execuções ociosas (sem chamado novo/retry) sem "⏳" com "followups ≤ 5"; resposta por e-mail no #364678 chega ao GLPI; encerrar #364678 pela tela do Tiflux (usuário, após conferir o estado) encerra o GLPI #34900 em cascata.

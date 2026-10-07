@@ -23,14 +23,25 @@ def main() -> None:
 
     try:
         _processar_chamados_pendentes(conn, config, glpi, tiflux)
+        requisicoes_na_criacao = tiflux.requisicoes_enviadas
 
         # Followups (GLPI <-> Tiflux) dos chamados já sincronizados — roda sempre,
         # mesmo sem chamados novos acima, e já pega chamados criados nesta mesma
         # execução em vez de esperar o próximo ciclo do cron.
         _sincronizar_followups_com_panorama(conn, config, glpi, tiflux)
+        log(resumo_requisicoes_tiflux(requisicoes_na_criacao, tiflux.requisicoes_enviadas))
     finally:
         glpi.encerrar_sessao()
         conn.close()
+
+
+def resumo_requisicoes_tiflux(na_criacao: int, total: int) -> str:
+    """
+    Linha de log com o uso da cota do Tiflux (120/min) na execução, separando a
+    criação de chamados — só a parte dos followups é fixa por execução (spec 008).
+    Ex.: resumo_requisicoes_tiflux(4, 7) -> "📡 Requisições ao Tiflux: 7 (criação 4 + followups 3)"
+    """
+    return f"📡 Requisições ao Tiflux: {total} (criação {na_criacao} + followups {total - na_criacao})"
 
 
 def _sincronizar_followups_com_panorama(

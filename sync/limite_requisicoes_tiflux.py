@@ -69,6 +69,9 @@ class SessaoTifluxLimitada:
         # RateLimit-Reset da última resposta que deixou a cota na reserva;
         # a espera é calculada na próxima chamada, que pode vir bem depois.
         self._reset_pendente: str | None = None
+        # Toda requisição enviada, repetições de 429 incluídas (spec 008: o log
+        # de cada execução mostra quanto da cota de 120/min foi usado).
+        self.requisicoes_enviadas = 0
 
     def get(self, url: str, **kwargs: object) -> requests.Response:
         return self._requisitar("GET", url, kwargs)
@@ -81,7 +84,7 @@ class SessaoTifluxLimitada:
 
     def _requisitar(self, metodo: str, url: str, kwargs: dict[str, object]) -> requests.Response:
         self._esperar_se_cota_na_reserva()
-        resposta = self._repetir_enquanto_429(metodo, url, kwargs, self._sessao.request(metodo, url, **kwargs))
+        resposta = self._repetir_enquanto_429(metodo, url, kwargs, self._enviar(metodo, url, kwargs))
         self._registrar_cota(resposta)
         return resposta
 
@@ -93,8 +96,12 @@ class SessaoTifluxLimitada:
             if resposta.status_code != 429:
                 return resposta
             self._esperar(self._espera_apos_429(resposta), f"429 em {metodo} {url}")
-            resposta = self._sessao.request(metodo, url, **kwargs)
+            resposta = self._enviar(metodo, url, kwargs)
         return resposta
+
+    def _enviar(self, metodo: str, url: str, kwargs: dict[str, object]) -> requests.Response:
+        self.requisicoes_enviadas += 1
+        return self._sessao.request(metodo, url, **kwargs)
 
     def _espera_apos_429(self, resposta: requests.Response) -> float:
         espera = segundos_ate_reset(resposta.headers.get("RateLimit-Reset"), self._agora())

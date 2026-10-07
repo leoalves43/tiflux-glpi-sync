@@ -30,6 +30,15 @@ class TestConectar(unittest.TestCase):
         self.assertIsInstance(sessao, SessaoTifluxLimitada)
         self.assertEqual(sessao._reserva, 9)
 
+    def test_requisicoes_enviadas_vem_da_sessao_limitada(self):
+        sessao = SessaoTifluxLimitada(FakeRequests(), reserva=5)
+        sessao.requisicoes_enviadas = 4
+        client = TifluxClient(URL_BASE, "t", cliente_id=1, id_solicitante_padrao=2, session=sessao)
+        self.assertEqual(client.requisicoes_enviadas, 4)
+
+    def test_sessao_sem_contador_informa_zero(self):
+        self.assertEqual(TifluxClient(URL_BASE, "t", 1, 2, session=FakeRequests()).requisicoes_enviadas, 0)
+
 
 class TestValidarMesaDoCliente(unittest.TestCase):
     def test_mesa_presente_na_lista_do_cliente(self):
