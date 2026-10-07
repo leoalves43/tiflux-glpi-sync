@@ -26,11 +26,18 @@
 - Checkpoint: linha marcadora em `api_glpi_tiflux_followups`
   (`direcao='checkpoint_tiflux'`, `id_glpi=0`, `id_origem=0`, ISO UTC em `mensagem`).
   Janela = checkpoint − `MARGEM_CHECKPOINT_TIFLUX_MINUTOS` (padrão 5); sem
-  checkpoint, os 60 min atuais. Avança para o início da execução só se o panorama
-  leu e `listagens_com_falha == 0` no fim.
+  checkpoint, os 60 min atuais. Avança para o início da execução sempre que o
+  panorama leu inteiro — falhas por chamado não o seguram (um ticket que sempre
+  falha travaria a janela até o teto de páginas).
 - Varredura de segurança: `VARREDURA_COMPLETA_POR_EXECUCAO` (padrão 1) chamados por
-  execução, o mais antigo pela marca `direcao='varredura_completa'`, `id_origem=-id_glpi`.
+  execução, o mais antigo pela marca `direcao='varredura_completa'`, `id_origem=-id_glpi`,
+  gravada mesmo se o GLPI falhar (senão um chamado com 404 permanente trava a fila).
   206 chamados × ~3 min ≈ 10 h por volta (crit. 7).
+- Retentativa por chamado: falha Tiflux->GLPI (publicação ou listagem de respostas),
+  ou GLPI ilegível num chamado em `atualizados`/`mudancas`, marca o chamado como
+  `status='prioritario'`; todos os prioritários entram na varredura completa da
+  execução seguinte, além dos N normais. Mantém a retentativa a cada execução que o
+  rodízio antigo dava (só linhas `sucesso` contam como processadas).
 - `SessaoTifluxLimitada` conta requisições; linha do placar ganha "Tiflux: N req".
 - Sem mudança de schema (`direcao` VARCHAR(20) comporta os dois valores novos).
 
@@ -61,5 +68,6 @@
 - [x] 2. Config (2 chaves + `exemplo.env`) e `db_followups`: checkpoint e marca de varredura completa + testes + `audit_tables.toon`. Done: verde.
 - [x] 3. `panorama_tiflux.py` + `mudancas_status_tiflux` recebendo a listagem + `main` passa o panorama ao orquestrador + checkpoint + testes (crit. 5). Done: verde.
 - [x] 4. Caminhos completo/leve em `sincronizacao_followups` + avanço do checkpoint + testes dos crit. 1–4, 6–8. Done: verde, crit. 1 medido no fake (≤ 5 chamadas).
+- [ ] 4b. Retentativa por chamado + marca de varredura mesmo em falha + checkpoint sem trava por chamado + testes. Done: verde.
 - [ ] 5. Contador de requisições na sessão + placar + testes. Done: verde.
-- [ ] 6. Rebuild do container; ARCHITECTURE, LOG, HANDOFF. Done: 3 execuções seguidas sem "⏳" com "Tiflux: ≤ 5 req"; resposta por e-mail no #364678 chega ao GLPI; encerrar #364678 no Tiflux encerra o GLPI #34900 em cascata.
+- [ ] 6. Rebuild do container; ARCHITECTURE, LOG, HANDOFF. Done: antes do rebuild, simulação só-leitura em produção conta quantos chamados exigem leitura individual; 3 execuções ociosas (sem chamado novo/retry) sem "⏳" com "Tiflux: ≤ 5 req"; resposta por e-mail no #364678 chega ao GLPI; encerrar #364678 pela tela do Tiflux (usuário, após conferir o estado) encerra o GLPI #34900 em cascata.
