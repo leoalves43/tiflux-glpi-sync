@@ -71,4 +71,4 @@
 - [x] 4. Caminhos completo/leve em `sincronizacao_followups` + avanço do checkpoint + testes dos crit. 1–4, 6–8. Done: verde, crit. 1 medido no fake (≤ 5 chamadas).
 - [x] 4b. Retentativa por chamado + marca de varredura mesmo em falha + checkpoint sem trava por chamado + testes. Done: verde.
 - [x] 5. Contador de requisições na sessão + linha no `main` + testes. Done: verde.
-- [ ] 6. Rebuild do container; ARCHITECTURE, LOG, HANDOFF. Done: antes do rebuild, simulação só-leitura em produção conta quantos chamados exigem leitura individual; 3 execuções ociosas (sem chamado novo/retry) sem "⏳" com "followups ≤ 5"; resposta por e-mail no #364678 chega ao GLPI; encerrar #364678 pela tela do Tiflux (usuário, após conferir o estado) encerra o GLPI #34900 em cascata.
+- [x] 6. Rebuild do container; ARCHITECTURE, LOG, HANDOFF. Done: antes do rebuild, simulação só-leitura em produção conta quantos chamados exigem leitura individual; 3 execuções ociosas (sem chamado novo/retry) sem "⏳" com "followups ≤ 5"; resposta por e-mail no #364678 chega ao GLPI; encerrar #364678 pela tela do Tiflux (usuário, após conferir o estado) encerra o GLPI #34900 em cascata.
