@@ -2,10 +2,12 @@
 
 import sys
 from collections import Counter
+from datetime import datetime, timezone
 
 from sync import db_chamados
 from sync.config import Config, log
 from sync.glpi_client import GlpiClient
+from sync.panorama_tiflux import concluir_panorama_tiflux, ler_panorama_tiflux
 from sync.processamento_chamado import processar_chamado
 from sync.sincronizacao_followups import sincronizar_followups
 from sync.tiflux_client import TifluxClient
@@ -25,10 +27,22 @@ def main() -> None:
         # Followups (GLPI <-> Tiflux) dos chamados já sincronizados — roda sempre,
         # mesmo sem chamados novos acima, e já pega chamados criados nesta mesma
         # execução em vez de esperar o próximo ciclo do cron.
-        sincronizar_followups(conn, config, glpi, tiflux)
+        _sincronizar_followups_com_panorama(conn, config, glpi, tiflux)
     finally:
         glpi.encerrar_sessao()
         conn.close()
+
+
+def _sincronizar_followups_com_panorama(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient,
+) -> None:
+    # Panorama incompleto (None) = nada a concluir dele; a próxima execução
+    # cobre o mesmo período, já que o checkpoint não avança (spec 008).
+    panorama = ler_panorama_tiflux(conn, config, tiflux, datetime.now(timezone.utc))
+    if panorama is None:
+        return
+    sincronizar_followups(conn, config, glpi, tiflux, panorama)
+    concluir_panorama_tiflux(conn, config, tiflux, panorama)
 
 
 def _conectar_db_ou_sair(config: Config) -> ConexaoDb:

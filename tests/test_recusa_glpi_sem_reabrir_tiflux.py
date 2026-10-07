@@ -6,7 +6,7 @@ import unittest
 
 from sync.config import Config
 from sync.sincronizacao_followups import sincronizar_followups
-from tests.fake_clients import FakeGlpiClient, FakeTifluxClient
+from tests.fake_clients import FakeGlpiClient, FakeTifluxClient, panorama_de_teste
 from tests.fakes import FakeConnection
 
 _CONFIG = Config(
@@ -36,7 +36,7 @@ class TestFalhaAoReabrirTiflux(unittest.TestCase):
         self.conn = FakeConnection(respostas=[[(1, "T-1")], [("encerramento",)]])
         self.saida = io.StringIO()
         with contextlib.redirect_stdout(self.saida):
-            sincronizar_followups(self.conn, _CONFIG, self.glpi, self.tiflux)
+            sincronizar_followups(self.conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste())
 
     def test_nao_encerra_o_glpi_de_novo(self):
         self.assertEqual(self.glpi.chamados_encerrados, [])
@@ -66,7 +66,7 @@ class TestReaberturaTifluxBemSucedida(unittest.TestCase):
         tiflux.ticket_tiflux = {"is_closed": True, "desk": {"id": 37964}}
         conn = FakeConnection(respostas=[[(1, "T-1")], [("encerramento",)]])
         with contextlib.redirect_stdout(io.StringIO()):
-            sincronizar_followups(conn, _CONFIG, glpi, tiflux)
+            sincronizar_followups(conn, _CONFIG, glpi, tiflux, panorama_de_teste())
         gravacoes = _gravacoes(conn)
         self.assertIn(("glpi_para_tiflux", "reabertura_tiflux", -1, None, "sucesso"), gravacoes)
         self.assertIn(("tiflux_para_glpi", "reabertura_tiflux", -1, None, "sucesso"), gravacoes)
@@ -84,7 +84,7 @@ class TestEqualizaReaberturaManualDoTiflux(unittest.TestCase):
         # varredura, e por fim a última ação de cascata.
         conn = FakeConnection(respostas=[[(1, "T-1")], [], [], ultima_acao])
         with contextlib.redirect_stdout(io.StringIO()):
-            sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux)
+            sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste())
         return _gravacoes(conn)
 
     def test_cascata_encerramento_vira_reabertura_tiflux(self):
@@ -108,7 +108,7 @@ class TestMarcaDeChamadoFechadoNoGlpi(unittest.TestCase):
         tiflux.ticket_tiflux = {"is_closed": True, "desk": {"id": 37964}}
         conn = FakeConnection(respostas=[[(1, "T-1")]])
         with contextlib.redirect_stdout(io.StringIO()):
-            sincronizar_followups(conn, _CONFIG, glpi, tiflux)
+            sincronizar_followups(conn, _CONFIG, glpi, tiflux, panorama_de_teste())
         return [g[4] for g in _gravacoes(conn) if g[0] == "verificacao_status"][0]
 
     def test_solucionado_recusavel_e_marcado_solucionado(self):

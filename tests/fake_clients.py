@@ -2,6 +2,20 @@
 pública usada por sync.processamento_chamado e pelos módulos de followups,
 sem depender de HTTP real."""
 
+from datetime import datetime, timezone
+
+from sync.panorama_tiflux import PanoramaTiflux
+
+
+def panorama_de_teste(
+    abertos: tuple = (), atualizados: tuple = (), mudancas: tuple = (), varredura_completa: tuple = (),
+) -> PanoramaTiflux:
+    """Panorama do Tiflux montado à mão (spec 008); o padrão não tem nenhum ticket aberto nem atualizado."""
+    return PanoramaTiflux(
+        datetime(2026, 10, 7, 19, 30, tzinfo=timezone.utc),
+        frozenset(abertos), frozenset(atualizados), tuple(mudancas), tuple(varredura_completa),
+    )
+
 
 class FakeGlpiClient:
     def __init__(self):

@@ -1,12 +1,7 @@
-import contextlib
-import io
 import unittest
-from datetime import datetime, timedelta, timezone
 
 from sync.config import Config
-from sync.mudancas_status_tiflux import obter_chamados_com_mudanca_de_status, selecionar_mudancas_de_status
-from sync.tiflux_client import ListagemTifluxIncompleta
-from tests.fake_clients import FakeTifluxClient
+from sync.mudancas_status_tiflux import cruzar_mudancas_de_status, selecionar_mudancas_de_status
 from tests.fakes import FakeConnection
 
 _CONFIG = Config(
@@ -15,7 +10,6 @@ _CONFIG = Config(
     db_host="", db_port="5432", db_name="", db_user="", db_password="",
     tabela_auditoria="x", tabela_followups="y",
 )
-_AGORA = datetime(2026, 10, 2, 19, 0, tzinfo=timezone.utc)
 
 
 class TestSelecionarMudancasDeStatus(unittest.TestCase):
@@ -46,32 +40,19 @@ class TestSelecionarMudancasDeStatus(unittest.TestCase):
         self.assertEqual(selecionar_mudancas_de_status(tickets, {}), [])
 
 
-class TestObterChamadosComMudancaDeStatus(unittest.TestCase):
-    def test_lista_desde_o_inicio_da_janela(self):
-        tiflux = FakeTifluxClient()
-        obter_chamados_com_mudanca_de_status(FakeConnection(), _CONFIG, tiflux, _AGORA)
-        janela = timedelta(minutes=_CONFIG.janela_mudancas_status_tiflux_minutos)
-        self.assertEqual(tiflux.inicios_listagem_atualizados, [_AGORA - janela])
-
+class TestCruzarMudancasDeStatus(unittest.TestCase):
     def test_sem_tickets_atualizados_nao_consulta_o_banco(self):
         conn = FakeConnection()
-        self.assertEqual(obter_chamados_com_mudanca_de_status(conn, _CONFIG, FakeTifluxClient(), _AGORA), [])
+        self.assertEqual(cruzar_mudancas_de_status(conn, _CONFIG, []), [])
         self.assertEqual(conn.execucoes, [])
 
-    def test_listagem_incompleta_vira_lista_vazia(self):
-        tiflux = FakeTifluxClient()
-        tiflux.falha_listagem_atualizados = ListagemTifluxIncompleta("status 500", [])
-        with contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(obter_chamados_com_mudanca_de_status(FakeConnection(), _CONFIG, tiflux, _AGORA), [])
-
     def test_cruza_tickets_com_auditoria(self):
-        tiflux = FakeTifluxClient()
-        tiflux.tickets_atualizados = [
+        tickets = [
             {"ticket_number": 10, "is_closed": True},
             {"ticket_number": 11, "is_closed": True},
         ]
         conn = FakeConnection(respostas=[[(10, 1, None), (11, 2, "encerramento")]])
-        self.assertEqual(obter_chamados_com_mudanca_de_status(conn, _CONFIG, tiflux, _AGORA), [(1, 10)])
+        self.assertEqual(cruzar_mudancas_de_status(conn, _CONFIG, tickets), [(1, 10)])
         _, params = conn.execucoes[0]
         self.assertEqual(params, ([10, 11],))
 

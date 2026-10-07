@@ -6,7 +6,7 @@ import unittest
 
 from sync.config import Config
 from sync.sincronizacao_followups import sincronizar_followups
-from tests.fake_clients import FakeGlpiClient, FakeTifluxClient
+from tests.fake_clients import FakeGlpiClient, FakeTifluxClient, panorama_de_teste
 from tests.fakes import FakeConnection
 
 _sem_console = lambda: contextlib.redirect_stdout(io.StringIO())
@@ -27,7 +27,7 @@ class TestSincronizarFollowups(unittest.TestCase):
         tiflux = FakeTifluxClient()
         glpi.tickets[1] = {"status": 6}
         conn = FakeConnection(respostas=[[(1, "T-1")]])
-        sincronizar_followups(conn, _CONFIG, glpi, tiflux)
+        sincronizar_followups(conn, _CONFIG, glpi, tiflux, panorama_de_teste())
         sql, params = conn.execucoes[-1]
         self.assertIn("verificacao_status", params)
         self.assertEqual(glpi.chamados_encerrados, [])
@@ -40,7 +40,7 @@ class TestSincronizarFollowups(unittest.TestCase):
         glpi.tickets[1] = {"status": 1}
         tiflux.ticket_tiflux = {"is_closed": False, "desk": {"id": 37964}}
         conn = FakeConnection(respostas=[[(1, "T-1")], [], []])
-        sincronizar_followups(conn, _CONFIG, glpi, tiflux)
+        sincronizar_followups(conn, _CONFIG, glpi, tiflux, panorama_de_teste())
         marcas = [p[2:7] for _, p in conn.execucoes if p and len(p) >= 7]
         self.assertIn(("verificacao_status", "status", -1, None, "aberto"), marcas)
 
@@ -48,7 +48,7 @@ class TestSincronizarFollowups(unittest.TestCase):
         glpi = FakeGlpiClient()
         tiflux = FakeTifluxClient()
         conn = FakeConnection(respostas=[[(1, None)]])
-        sincronizar_followups(conn, _CONFIG, glpi, tiflux)
+        sincronizar_followups(conn, _CONFIG, glpi, tiflux, panorama_de_teste())
         # única execução é a própria SELECT de candidatos — nada mais rodou
         self.assertEqual(len(conn.execucoes), 1)
 
@@ -58,16 +58,12 @@ class TestSincronizarFollowups(unittest.TestCase):
         # leva do rodízio roda uma vez só.
         glpi = FakeGlpiClient()
         tiflux = FakeTifluxClient()
-        tiflux.tickets_atualizados = [{"ticket_number": 20, "is_closed": True}]
         glpi.tickets[2] = {"status": 6}
         glpi.tickets[1] = {"status": 6}
-        conn = FakeConnection(respostas=[
-            [(20, 2, None)],           # obter_chamados_por_numero_tiflux
-            [(1, 10), (2, 20)],        # rodízio
-        ])
+        conn = FakeConnection(respostas=[[(1, 10), (2, 20)]])  # rodízio
         with _sem_console():
-            sincronizar_followups(conn, _CONFIG, glpi, tiflux)
-        marcados = [params[0] for _, params in conn.execucoes[2:]]
+            sincronizar_followups(conn, _CONFIG, glpi, tiflux, panorama_de_teste(mudancas=((2, 20),)))
+        marcados = [params[0] for _, params in conn.execucoes[1:]]
         self.assertEqual(marcados, [2, 1])
 
     def test_falha_ao_conferir_status_pula_sem_quebrar(self):
@@ -75,7 +71,7 @@ class TestSincronizarFollowups(unittest.TestCase):
         tiflux = FakeTifluxClient()
         conn = FakeConnection(respostas=[[(1, "T-1")]])
         with _sem_console():
-            sincronizar_followups(conn, _CONFIG, glpi, tiflux)
+            sincronizar_followups(conn, _CONFIG, glpi, tiflux, panorama_de_teste())
         # única execução é a própria SELECT de candidatos — nada mais rodou
         self.assertEqual(len(conn.execucoes), 1)
 

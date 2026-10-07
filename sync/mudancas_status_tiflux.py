@@ -2,39 +2,26 @@
 
 O rodízio de followups (db_followups.obter_chamados_para_varrer_followups)
 confere só uma leva de chamados por execução, então um encerramento no Tiflux
-levava várias execuções pra chegar no GLPI. Aqui uma única listagem dos tickets
-atualizados recentemente aponta quais chamados mudaram de status, pra entrarem
-já na execução atual.
+levava várias execuções pra chegar no GLPI. Aqui a listagem dos tickets
+atualizados (panorama_tiflux) aponta quais chamados mudaram de status, pra
+entrarem já na execução atual.
 """
 
-from datetime import datetime, timedelta
-
 from sync import db_followups
-from sync.config import Config, log
-from sync.tiflux_client import ListagemTifluxIncompleta, TifluxClient
+from sync.config import Config
 from sync.tipos import ConexaoDb
 
 _ACAO_ENCERRAMENTO = "encerramento"
 
 
-def obter_chamados_com_mudanca_de_status(
-    conn: ConexaoDb, config: Config, tiflux: TifluxClient, agora_utc: datetime,
-) -> list[tuple[int, int]]:
+def cruzar_mudancas_de_status(conn: ConexaoDb, config: Config, tickets: list[dict]) -> list[tuple[int, int]]:
     """
-    Pares (id_glpi, numero_tiflux) cujo status no Tiflux diverge da última
-    ação de cascata registrada. Só lê — quem encerra/reabre é o fluxo normal
-    de sincronizacao_followups + cascata_status.
-    Ex.: obter_chamados_com_mudanca_de_status(conn, config, tiflux, datetime.now(timezone.utc))
+    Pares (id_glpi, numero_tiflux) cujo status no Tiflux (`tickets`, da
+    listagem de atualizados do panorama_tiflux) diverge da última ação de
+    cascata registrada. Só lê — quem encerra/reabre é o fluxo normal de
+    sincronizacao_followups + cascata_status.
+    Ex.: cruzar_mudancas_de_status(conn, config, [{"ticket_number": 9, "is_closed": True}]) -> [(1, 9)]
     """
-    inicio = agora_utc - timedelta(minutes=config.janela_mudancas_status_tiflux_minutos)
-    try:
-        tickets = tiflux.listar_tickets_atualizados_desde(
-            inicio, config.tamanho_pagina_tickets_tiflux, config.max_paginas_tickets_tiflux,
-        )
-    except ListagemTifluxIncompleta as e:
-        # O rodízio normal continua cobrindo.
-        log(f"⚠️ {e}")
-        return []
     if not tickets:
         return []
     numeros = [t["ticket_number"] for t in tickets if t.get("ticket_number") is not None]
