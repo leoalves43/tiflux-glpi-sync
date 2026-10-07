@@ -11,10 +11,11 @@ NEXT:
    listing + existing `update_start_datetime` listing; `/answers` only for updated tickets;
    per-ticket GET only on transitions; small safety sweep).
 2. VPS deploy PAUSED by user — don't bring it up until asked.
-3. Refactor 005 in prod: ticket create + cascade write still unconfirmed.
+3. Refactor 005 in prod: ticket create confirmed (#34900, 16:23); cascade write unconfirmed.
 
 RISKS:
 - 008: failed listing returns [] today — must not be read as "all closed".
-- `updated_at` bump on answer verified on 4 tickets only (not e-mail/portal answers).
+- `updated_at` bump verified for web + e-mail answers (test GLPI #34900 / Tiflux #364678,
+  still open — close after spec 008 tests); attachment answers not tested.
 
 CONTEXT: specs/007, decisions/LOG.md 2026-10-07, sync/sincronizacao_followups.py.
