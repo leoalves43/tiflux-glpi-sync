@@ -7,8 +7,8 @@ DONE (2026-10-07), 371 tests green (3.14 + 3.13), container rebuilt 16:57:
   Tiflux close -> GLPI Solucionado cascade (16:59-17:06). Idle run 17:02: 5 req.
 
 NEXT:
-1. Finish plan 008 task 6 (live checks): 3 idle runs with "followups ≤ 5" in the
-   "📡 Requisições ao Tiflux" line; user answers Tiflux #364678 by e-mail -> reaches
+1. Finish plan 008 task 6: idle-run check DONE (17:02/17:09/17:11 = 5/4/4 req, no "⏳").
+   Pending: user answers Tiflux #364678 by e-mail -> reaches
    GLPI #34900 via the light path. Then #34900/#364678 can be closed (optional;
    cascade already confirmed on #34901) — read state first, user closes in Tiflux UI.
 2. VPS deploy PAUSED by user — don't bring it up until asked.
