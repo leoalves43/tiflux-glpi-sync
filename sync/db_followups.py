@@ -228,6 +228,7 @@ def _registrar_verificacao_status(
 _DIRECAO_CHECKPOINT = "checkpoint_tiflux"
 _DIRECAO_VARREDURA_COMPLETA = "varredura_completa"
 _STATUS_MARCADOR = "marcador"
+_STATUS_PRIORITARIO = "prioritario"
 
 
 def obter_checkpoint_tiflux(conn: ConexaoDb, config: Config) -> datetime | None:
@@ -264,24 +265,47 @@ def registrar_checkpoint_tiflux(conn: ConexaoDb, config: Config, inicio_utc: dat
 
 def obter_chamados_para_varredura_completa(conn: ConexaoDb, config: Config, quantidade: int) -> list[tuple[int, int]]:
     """
-    Pares (id_glpi, numero_tiflux) dos `quantidade` chamados status='sucesso'
-    conferidos por completo há mais tempo (nunca conferidos primeiro).
+    Pares (id_glpi, numero_tiflux) a conferir por completo nesta execução:
+    todos os marcados como prioritários (falha na execução anterior, ver
+    priorizar_varredura_completa) mais os `quantidade` chamados status='sucesso'
+    conferidos há mais tempo (nunca conferidos primeiro).
     Ex.: obter_chamados_para_varredura_completa(conn, config, 1) -> [(34759, 364160)]
     """
     with conn.cursor() as cur:
         cur.execute(
             f"""
-            SELECT t.id_glpi, t.numero_tiflux
-            FROM {config.tabela_auditoria} t
-            LEFT JOIN {config.tabela_followups} v
-              ON v.direcao = %s AND v.id_origem = -t.id_glpi
-            WHERE t.status = 'sucesso' AND t.numero_tiflux IS NOT NULL
-            ORDER BY v.atualizado_em ASC NULLS FIRST, t.id_glpi ASC
-            LIMIT %s
+            WITH fila AS (
+                SELECT t.id_glpi, t.numero_tiflux, v.atualizado_em,
+                       COALESCE(v.status = %s, FALSE) AS prioritario
+                FROM {config.tabela_auditoria} t
+                LEFT JOIN {config.tabela_followups} v
+                  ON v.direcao = %s AND v.id_origem = -t.id_glpi
+                WHERE t.status = 'sucesso' AND t.numero_tiflux IS NOT NULL
+            )
+            (SELECT id_glpi, numero_tiflux FROM fila WHERE prioritario)
+            UNION ALL
+            (SELECT id_glpi, numero_tiflux FROM fila WHERE NOT prioritario
+             ORDER BY atualizado_em ASC NULLS FIRST, id_glpi ASC
+             LIMIT %s)
             """,
-            (_DIRECAO_VARREDURA_COMPLETA, quantidade),
+            (_STATUS_PRIORITARIO, _DIRECAO_VARREDURA_COMPLETA, quantidade),
         )
         return [(id_glpi, numero) for id_glpi, numero in cur.fetchall()]
+
+
+def priorizar_varredura_completa(
+    conn: ConexaoDb, config: Config, id_glpi: int, numero_tiflux: NumeroTiflux, motivo: str,
+) -> None:
+    """
+    Põe o chamado na varredura completa da próxima execução (spec 008). Substitui
+    a retentativa que o rodízio antigo dava ao reler as respostas de todo chamado
+    a cada execução. Sai da prioridade quando registrar_varredura_completa roda.
+    Ex.: priorizar_varredura_completa(conn, config, 34900, 364678, "falha ao publicar resposta no GLPI")
+    """
+    registrar_resultado_followup(
+        conn, config, id_glpi, numero_tiflux, _DIRECAO_VARREDURA_COMPLETA, "status", -id_glpi, None,
+        _STATUS_PRIORITARIO, f"Reconferir por completo na próxima execução: {motivo}",
+    )
 
 
 def registrar_varredura_completa(conn: ConexaoDb, config: Config, id_glpi: int, numero_tiflux: NumeroTiflux) -> None:

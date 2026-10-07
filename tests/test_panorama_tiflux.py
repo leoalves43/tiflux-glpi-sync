@@ -70,19 +70,13 @@ class TestLerPanorama(unittest.TestCase):
 
 
 class TestConcluirPanorama(unittest.TestCase):
-    def test_sem_falhas_avanca_checkpoint_pro_inicio_da_execucao(self):
+    def test_avanca_checkpoint_pro_inicio_da_execucao(self):
+        # Falhas por chamado não seguram o checkpoint: viram retentativa na
+        # varredura completa (test_sincronizacao_followups.TestRetentativaPorChamado).
         conn = FakeConnection()
-        concluir_panorama_tiflux(conn, _CONFIG, FakeTifluxClient(), panorama_de_teste())
+        concluir_panorama_tiflux(conn, _CONFIG, panorama_de_teste())
         params = conn.execucoes[0][1]
         self.assertEqual((params[2], params[7]), ("checkpoint_tiflux", "2026-10-07T19:30:00+00:00"))
-
-    def test_listagem_de_respostas_com_falha_mantem_checkpoint(self):
-        tiflux = FakeTifluxClient()
-        tiflux.listagens_com_falha = 1
-        conn = FakeConnection()
-        with _sem_console():
-            concluir_panorama_tiflux(conn, _CONFIG, tiflux, panorama_de_teste())
-        self.assertEqual(conn.execucoes, [])
 
 
 if __name__ == "__main__":

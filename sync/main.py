@@ -42,7 +42,7 @@ def _sincronizar_followups_com_panorama(
     if panorama is None:
         return
     sincronizar_followups(conn, config, glpi, tiflux, panorama)
-    concluir_panorama_tiflux(conn, config, tiflux, panorama)
+    concluir_panorama_tiflux(conn, config, panorama)
 
 
 def _conectar_db_ou_sair(config: Config) -> ConexaoDb:

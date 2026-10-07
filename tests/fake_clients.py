@@ -137,6 +137,8 @@ class FakeTifluxClient:
         self.falha_listagem_atualizados: Exception | None = None
         self.falha_listagem_abertos: Exception | None = None
         self.listagens_com_falha = 0
+        # Simula listar_respostas com falha: devolve [] e conta, como o cliente real.
+        self.falhar_listagem_respostas = False
 
     def validar_mesa_do_cliente(self, id_mesa):
         return True if self.mesas_validas is None else id_mesa in self.mesas_validas
@@ -174,6 +176,9 @@ class FakeTifluxClient:
         return self.tickets_abertos
 
     def listar_respostas(self, ticket_number, tamanho_pagina, max_paginas):
+        if self.falhar_listagem_respostas:
+            self.listagens_com_falha += 1
+            return []
         return self.respostas
 
     def listar_comunicacoes_internas(self, ticket_number, tamanho_pagina, max_paginas):

@@ -61,16 +61,14 @@ def ler_panorama_tiflux(
     )
 
 
-def concluir_panorama_tiflux(conn: ConexaoDb, config: Config, tiflux: TifluxClient, panorama: PanoramaTiflux) -> None:
+def concluir_panorama_tiflux(conn: ConexaoDb, config: Config, panorama: PanoramaTiflux) -> None:
     """
-    Avança o checkpoint pro início desta execução — só se nenhuma listagem de
-    respostas/comunicações falhou nela (senão uma resposta podia ficar pra trás).
-    Ex.: concluir_panorama_tiflux(conn, config, tiflux, panorama)
+    Avança o checkpoint pro início desta execução. Falhas de um chamado não o
+    seguram — um ticket que sempre falha travaria a janela até o teto de
+    páginas; esses chamados vão pra varredura completa da próxima execução
+    (sincronizacao_followups._motivo_para_retentar).
+    Ex.: concluir_panorama_tiflux(conn, config, panorama)
     """
-    if tiflux.listagens_com_falha:
-        log(f"⚠️ {tiflux.listagens_com_falha} listagem(ns) do Tiflux falharam — checkpoint mantido "
-            f"em vez de avançar para {panorama.inicio_execucao_utc.isoformat()}")
-        return
     db_followups.registrar_checkpoint_tiflux(conn, config, panorama.inicio_execucao_utc)
 
 

@@ -170,13 +170,22 @@ class TestCheckpointTiflux(unittest.TestCase):
 
 
 class TestVarreduraCompleta(unittest.TestCase):
-    def test_mais_antigos_primeiro_com_limite(self):
+    def test_prioritarios_todos_mais_os_mais_antigos_com_limite(self):
         conn = FakeConnection(respostas=[[(34759, 364160)]])
         pares = db_followups.obter_chamados_para_varredura_completa(conn, _CONFIG, 1)
         self.assertEqual(pares, [(34759, 364160)])
         sql, params = conn.execucoes[0]
-        self.assertIn("ORDER BY v.atualizado_em ASC NULLS FIRST", " ".join(sql.split()))
-        self.assertEqual(params, ("varredura_completa", 1))
+        sql = " ".join(sql.split())
+        self.assertIn("(SELECT id_glpi, numero_tiflux FROM fila WHERE prioritario) UNION ALL", sql)
+        self.assertIn("WHERE NOT prioritario ORDER BY atualizado_em ASC NULLS FIRST, id_glpi ASC LIMIT %s", sql)
+        self.assertEqual(params, ("prioritario", "varredura_completa", 1))
+
+    def test_priorizar_grava_status_prioritario_com_motivo(self):
+        conn = FakeConnection()
+        db_followups.priorizar_varredura_completa(conn, _CONFIG, 34900, 364678, "falha X")
+        params = conn.execucoes[0][1]
+        self.assertEqual(params[2:7], ("varredura_completa", "status", -34900, None, "prioritario"))
+        self.assertIn("falha X", params[7])
 
     def test_registra_marca_por_chamado(self):
         conn = FakeConnection()

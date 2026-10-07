@@ -63,18 +63,55 @@ def _sincronizar_chamado(
     conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
     numero_tiflux: NumeroTiflux, placar: PlacarFollowups, panorama: PanoramaTiflux,
 ) -> None:
+    falhas_antes = _falhas_tiflux_para_glpi(placar, tiflux)
+    conferido = _conferir_chamado(conn, config, glpi, tiflux, id_glpi, numero_tiflux, placar, panorama)
+    if id_glpi in _ids_glpi(panorama.varredura_completa):
+        # Marca mesmo se o GLPI falhou: um chamado com 404 permanente
+        # ficaria pra sempre no topo da fila e travaria a varredura.
+        db_followups.registrar_varredura_completa(conn, config, id_glpi, numero_tiflux)
+    falhas_depois = _falhas_tiflux_para_glpi(placar, tiflux)
+    motivo = _motivo_para_retentar(id_glpi, numero_tiflux, panorama, conferido, falhas_antes, falhas_depois)
+    if motivo:
+        log(f"↩️ Chamado #{id_glpi} (Tiflux #{numero_tiflux}): {motivo} — reconferido por completo na próxima execução")
+        db_followups.priorizar_varredura_completa(conn, config, id_glpi, numero_tiflux, motivo)
+
+
+def _conferir_chamado(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
+    numero_tiflux: NumeroTiflux, placar: PlacarFollowups, panorama: PanoramaTiflux,
+) -> bool:
+    """False se o chamado não pôde ser lido no GLPI (pulado nesta execução)."""
     ticket_glpi, status_code = glpi.obter_ticket(id_glpi)
     if ticket_glpi is None:
         log(f"⚠️ Não foi possível conferir status do chamado #{id_glpi} no GLPI "
             f"(status {status_code}) — pulado nesta execução")
-        return
-
-    if not conferir_por_completo(id_glpi, numero_tiflux, ticket_glpi, panorama):
+        return False
+    if conferir_por_completo(id_glpi, numero_tiflux, ticket_glpi, panorama):
+        _sincronizar_chamado_completo(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_glpi, placar)
+    else:
         _sincronizar_chamado_pelo_panorama(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_glpi, placar, panorama)
-        return
-    _sincronizar_chamado_completo(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_glpi, placar)
-    if id_glpi in _ids_glpi(panorama.varredura_completa):
-        db_followups.registrar_varredura_completa(conn, config, id_glpi, numero_tiflux)
+    return True
+
+
+def _falhas_tiflux_para_glpi(placar: PlacarFollowups, tiflux: TifluxClient) -> tuple[int, int]:
+    return placar.tiflux_para_glpi_erro, tiflux.listagens_com_falha
+
+
+def _motivo_para_retentar(
+    id_glpi: int, numero_tiflux: NumeroTiflux, panorama: PanoramaTiflux, conferido: bool,
+    falhas_antes: tuple[int, int], falhas_depois: tuple[int, int],
+) -> str | None:
+    """
+    Por que o chamado precisa ser reconferido na próxima execução, ou None.
+    O checkpoint avança mesmo assim; sem isso, uma resposta do Tiflux que
+    falhou só voltaria na varredura de segurança, horas depois (spec 008).
+    """
+    if falhas_depois != falhas_antes:
+        return "falha ao trazer respostas do Tiflux para o GLPI"
+    mudou_no_tiflux = numero_tiflux in panorama.atualizados or id_glpi in _ids_glpi(panorama.mudancas)
+    if not conferido and mudou_no_tiflux:
+        return "atualizado no Tiflux, mas ilegível no GLPI"
+    return None
 
 
 def conferir_por_completo(

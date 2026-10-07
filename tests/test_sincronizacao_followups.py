@@ -178,13 +178,63 @@ class TestVarreduraDeSeguranca(unittest.TestCase):
         self.assertEqual(tiflux.requisicoes[:2], ["obter_ticket", "listar_respostas"])
         self.assertEqual(_gravacoes(conn)[-1][:3], ("varredura_completa", "status", -1))
 
-    def test_falha_no_glpi_nao_marca(self):
+    def test_falha_no_glpi_marca_mesmo_assim_pra_fila_nao_travar(self):
+        # Um chamado com 404 permanente no GLPI ficaria no topo da fila pra sempre.
         conn = FakeConnection(respostas=[[]])
         with _sem_console():
             sincronizar_followups(
                 conn, _CONFIG, FakeGlpiClient(), FakeTifluxClient(), panorama_de_teste(varredura_completa=((1, 10),)),
             )
-        self.assertFalse([g for g in _gravacoes(conn) if g[0] == "varredura_completa"])
+        self.assertEqual(_gravacoes(conn), [("varredura_completa", "status", -1, None, "marcador")])
+
+
+class TestRetentativaPorChamado(unittest.TestCase):
+    """O rodízio antigo relia as respostas de todo chamado a cada execução; agora a falha prioriza o chamado."""
+
+    def setUp(self):
+        self.glpi = FakeGlpiClient()
+        self.tiflux = FakeTifluxClient()
+        self.glpi.tickets[1] = {"status": 2}
+        self.tiflux.respostas = [{"id": 5, "name": "resposta"}]
+
+    def _prioridades(self, panorama) -> list[tuple]:
+        conn = FakeConnection(respostas=[[(1, 10)]])
+        with _sem_console():
+            sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama)
+        return [g for g in _gravacoes(conn) if g[4] == "prioritario"]
+
+    def test_falha_ao_publicar_resposta_no_glpi_prioriza(self):
+        self.glpi.erro_ao_criar_followup = "GLPI 500"
+        prioridades = self._prioridades(panorama_de_teste(abertos=(10,), atualizados=(10,)))
+        self.assertEqual(prioridades, [("varredura_completa", "status", -1, None, "prioritario")])
+
+    def test_falha_ao_listar_respostas_prioriza(self):
+        self.tiflux.falhar_listagem_respostas = True
+        self.assertTrue(self._prioridades(panorama_de_teste(abertos=(10,), atualizados=(10,))))
+
+    def test_glpi_ilegivel_em_ticket_atualizado_prioriza(self):
+        del self.glpi.tickets[1]
+        self.assertTrue(self._prioridades(panorama_de_teste(abertos=(10,), atualizados=(10,))))
+
+    def test_glpi_ilegivel_em_ticket_sem_mudanca_nao_prioriza(self):
+        # O rodízio já o traz de volta; não há resposta nova esperando.
+        del self.glpi.tickets[1]
+        self.assertEqual(self._prioridades(panorama_de_teste(abertos=(10,))), [])
+
+    def test_sucesso_nao_prioriza(self):
+        self.assertEqual(self._prioridades(panorama_de_teste(abertos=(10,), atualizados=(10,))), [])
+
+    def test_prioridade_vence_a_marca_da_varredura(self):
+        # Varrido e falhou de novo: a última gravação deixa o chamado prioritário.
+        self.glpi.erro_ao_criar_followup = "GLPI 500"
+        self.tiflux.ticket_tiflux = {"is_closed": False, "desk": {"id": 37964}}
+        conn = FakeConnection(respostas=[[(1, 10)]])
+        with _sem_console():
+            sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste(
+                abertos=(10,), varredura_completa=((1, 10),),
+            ))
+        marcas = [g[4] for g in _gravacoes(conn) if g[0] == "varredura_completa"]
+        self.assertEqual(marcas, ["marcador", "prioritario"])
 
 
 class TestConferirPorCompleto(unittest.TestCase):

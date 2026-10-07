@@ -71,8 +71,8 @@ class TifluxClient:
         # nova a cada request. Ver docs/decisions/LOG.md.
         self._session = session if session is not None else requests.Session()
         self._headers_json, self._headers_form, self._headers_get = _cabecalhos_tiflux(token)
-        # Listagens de respostas/comunicações que falharam nesta execução: o
-        # checkpoint do panorama (spec 008) só avança se for zero.
+        # Listagens de respostas/comunicações que falharam nesta execução: um
+        # aumento durante um chamado o põe na varredura completa seguinte (spec 008).
         self.listagens_com_falha = 0
 
     @property
