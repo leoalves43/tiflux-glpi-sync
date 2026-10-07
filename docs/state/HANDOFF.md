@@ -1,21 +1,21 @@
 # Handoff
 
-DONE (2026-10-07), local container rebuilt, 324 tests green (3.14 + 3.13):
-- Specs 003-007 shipped (see decisions/LOG.md 2026-10-07).
-- Rate-limit study: a run scans 98 tickets (27 aberto + 21 solucionado + 50 fechado),
-  ~1 GET /tickets/{n} each + /answers for the 48 open ≈ 145 Tiflux calls -> every run
-  hits the reserve even with 0 followups. Tiflux had only 12 tickets updated in 8 h, 30 open.
+DONE (2026-10-07), 371 tests green (3.14 + 3.13), container rebuilt 16:57:
+- Specs 003-007 shipped. Spec 008 (change-driven Tiflux side) deployed: tasks 1-5
+  done; first run 6 Tiflux req (was ~145), no "⏳". Prod dry run: 99/100 light.
+- Refactor 005 in prod: ticket create confirmed (#34900, 16:23).
 
 NEXT:
-1. Spec 008 APPROVED; plan 008 written, AWAITING APPROVAL. Proposal (change-driven Tiflux side: 1 `filter_by=open`
-   listing + existing `update_start_datetime` listing; `/answers` only for updated tickets;
-   per-ticket GET only on transitions; small safety sweep).
+1. Finish plan 008 task 6 (live checks): 3 idle runs with "followups ≤ 5" in the
+   "📡 Requisições ao Tiflux" line; user answers Tiflux #364678 by e-mail -> reaches
+   GLPI #34900; user closes #364678 in the Tiflux UI (read state first) -> GLPI
+   #34900 cascades to Solucionado (also confirms refactor 005 cascade write).
 2. VPS deploy PAUSED by user — don't bring it up until asked.
-3. Refactor 005 in prod: ticket create confirmed (#34900, 16:23); cascade write unconfirmed.
 
 RISKS:
-- 008: failed listing returns [] today — must not be read as "all closed".
-- `updated_at` bump verified for web + e-mail answers (test GLPI #34900 / Tiflux #364678,
-  still open — close after spec 008 tests); attachment answers not tested.
+- `updated_at` bump verified for web + e-mail answers; attachment answers untested
+  (safety sweep covers, ~10 h per lap at 1/run).
+- "↩️ ... reconferido" lines = per-ticket retry; same ticket every run = permanent failure.
+- Rollback: `git revert` 6bf14b9..HEAD + rebuild; marker rows are inert.
 
-CONTEXT: specs/007, decisions/LOG.md 2026-10-07, sync/sincronizacao_followups.py.
+CONTEXT: specs/008, plans/008, decisions/LOG.md 2026-10-07 (spec 008 entry).
