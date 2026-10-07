@@ -27,11 +27,13 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
    during a GLPI token outage) — if found, links it instead of creating a
    duplicate. Otherwise translates and creates the ticket in Tiflux, assigns a
    technician, uploads attachments.
-2. **Followup sync, bidirectional, for already-synced open tickets.**
-   `sincronizar_followups()` (sync/sincronizacao_followups.py) takes tickets whose
-   Tiflux open/closed state changed in the last hour (`mudancas_status_tiflux.py`,
-   one `GET /tickets`) plus every `status='sucesso'` ticket open or Solucionado in
-   GLPI (or never scanned) and a rotating batch of 50 GLPI-Fechado ones (specs 003/004):
+2. **Followup sync, bidirectional, for already-synced open tickets.** `main()` reads a
+   `PanoramaTiflux` (sync/panorama_tiflux.py, spec 008): open tickets + tickets updated
+   since the checkpoint (2 listings); any failure -> `None`, followups skipped. Then
+   `sincronizar_followups()` takes state changes + safety sweep + the rotation (every
+   GLPI open/Solucionado `sucesso` ticket, 50 GLPI-Fechado). Per ticket,
+   `conferir_por_completo()` picks the full path (`GET /tickets/{n}`, all writes) or
+   the light one (no Tiflux GET; `/answers` only if updated). Failures -> `prioritario`:
    - `sincronizar_followups_glpi_para_tiflux()` — GLPI `ITILFollowup` ->
      Tiflux `/client-answers`, always with the GLPI author's name (public only).
    - `sincronizar_followups_tiflux_para_glpi()` — Tiflux answers/internal
@@ -59,12 +61,12 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
 | `sync/publicacao_followups.py` | the two directional followup publishers (GLPI->Tiflux, Tiflux->GLPI) |
 | `sync/cascata_status.py` | cascade close/reopen GLPI<->Tiflux and Tiflux reopen after GLPI refusal |
 | `sync/mudancas_status_tiflux.py` | picks tickets recently closed/reopened in Tiflux so the cascade runs every cycle |
+| `sync/panorama_tiflux.py` | `PanoramaTiflux`: the 2 listings per run, checkpoint window, safety-sweep pairs (spec 008) |
 | `sync/main.py` | `main()` — wiring, candidate selection, top-level logging |
 | `sync/forcar_sincronizacao.py` | `python -m sync.forcar_sincronizacao --id-glpi N` — manual backup for one ticket skipped by the cron; see below |
 | `sync/encerrar_legado.py` | `python -m sync.encerrar_legado --id-glpi N --numero-tiflux M` — one-off GLPI close for tickets opened by hand in Tiflux pre-integration; never writes `api_glpi_tiflux` (spec 002) |
 
-Clients are built once per run in `main()` and passed as parameters (no globals,
-no per-call re-auth); `TifluxClient` caches valid desks per instance.
+Clients built once per run in `main()`, passed as parameters; `TifluxClient` caches desks.
 
 ## Two audit tables (Postgres, schema from `DB_SCHEMA` cred, default `siap_custom`)
 
@@ -78,16 +80,14 @@ Full DDL and column reference: `docs/data/audit_tables.toon`. Summary:
 ## External APIs
 
 - GLPI: session-token auth (`initSession`/`killSession`), sub-item pattern
-  (`GET /Ticket/{id}/<SubItem>`), item creation via `{"input": {...}}` wrapper.
-  No local spec — GLPI's own REST conventions, verified live during development.
+  (`GET /Ticket/{id}/<SubItem>`), creation via `{"input": {...}}`; no local spec, verified live.
 - Tiflux: bearer auth, documented in `openapi-spec-tiflux.json` (local file,
   1.7MB — grep it, don't read it whole). Three header dicts (`_cabecalhos_tiflux`):
   GET never sends Content-Type; followup POSTs force multipart (see LOG.md).
 
 ## Manual force-sync entrypoint
 
-`sync/forcar_sincronizacao.py`, run by hand (README; the PHP interface that drove
-it is paused). Reuses `processar_chamado` and both followup functions; no cascade.
+`sync/forcar_sincronizacao.py`, run by hand (README). Reuses `processar_chamado` and both followup functions; no cascade.
 `decidir_acao()` never calls `processar_chamado` when `numero_tiflux IS NOT NULL`
 (even on `status='erro'`, see bug below). Its `pg_try_advisory_lock` only blocks
 two forced runs on the same ticket, not the container loop.
