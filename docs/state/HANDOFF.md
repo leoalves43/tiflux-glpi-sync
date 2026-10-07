@@ -3,13 +3,14 @@
 DONE (2026-10-07), 371 tests green (3.14 + 3.13), container rebuilt 16:57:
 - Specs 003-007 shipped. Spec 008 (change-driven Tiflux side) deployed: tasks 1-5
   done; first run 6 Tiflux req (was ~145), no "⏳". Prod dry run: 99/100 light.
-- Refactor 005 in prod: ticket create confirmed (#34900, 16:23).
+- Refactor 005 + spec 008 in prod, real GLPI #34901: create, GLPI->Tiflux x2, Tiflux->GLPI,
+  Tiflux close -> GLPI Solucionado cascade (16:59-17:06). Idle run 17:02: 5 req.
 
 NEXT:
 1. Finish plan 008 task 6 (live checks): 3 idle runs with "followups ≤ 5" in the
    "📡 Requisições ao Tiflux" line; user answers Tiflux #364678 by e-mail -> reaches
-   GLPI #34900; user closes #364678 in the Tiflux UI (read state first) -> GLPI
-   #34900 cascades to Solucionado (also confirms refactor 005 cascade write).
+   GLPI #34900 via the light path. Then #34900/#364678 can be closed (optional;
+   cascade already confirmed on #34901) — read state first, user closes in Tiflux UI.
 2. VPS deploy PAUSED by user — don't bring it up until asked.
 
 RISKS:
