@@ -51,6 +51,7 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
 | `sync/db_followups.py` | Postgres — one row per followup (`api_glpi_tiflux_followups`) |
 | `sync/glpi_client.py` | `GlpiClient` — thin wrapper over GLPI REST, owns the session headers |
 | `sync/tiflux_client.py` | `TifluxClient` — thin wrapper over Tiflux REST, owns the header dicts and the mesa-validation cache |
+| `sync/limite_requisicoes_tiflux.py` | `SessaoTifluxLimitada` — session used by `TifluxClient.conectar`; waits on `RateLimit-*` headers, retries 429 (spec 007) |
 | `sync/html_texto.py` | `html_para_texto_plano()` — GLPI HTML description -> Tiflux plain text |
 | `sync/regras_negocio.py` | category->desk mapping, technician/priority lookup, requester-is-author check |
 | `sync/processamento_chamado.py` | `processar_chamado()` — creates one ticket end to end |

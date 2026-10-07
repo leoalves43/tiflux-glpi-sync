@@ -1,22 +1,20 @@
 # Handoff
 
-DONE (2026-10-07), local container rebuilt, 304 tests green (3.14 + 3.13):
-- Spec/plan 003: all GLPI-open tickets scanned every run + 50 closed; loop 120 s.
-- Spec/plan 004: failed Tiflux reopen after GLPI refusal keeps GLPI open,
-  logs, retries every run; GLPI Solucionado scanned every run (#34759).
-- Spec/plan 005: no-behavior refactor (followups in 3 modules, typed, short fns).
-- Spec/plan 006: after reopening Tiflux, previous responsible is re-assigned
-  if missing/different (Tiflux seems to keep it; now enforced).
+DONE (2026-10-07), local container rebuilt, 324 tests green (3.14 + 3.13):
+- Specs 003-005: open+Solucionado GLPI tickets scanned every run (loop 120 s);
+  failed Tiflux reopen keeps GLPI open and retries; no-behavior refactor.
+- Spec 006: reopened Tiflux ticket gets its previous responsible back.
+- Spec 007: Tiflux calls honor RateLimit headers and retry 429.
 
 NEXT:
-1. Next GLPI refusal: watch the log — Tiflux should reopen by itself and keep
-   the técnico (a "atribuído de novo" line means Tiflux dropped it).
-2. Confirm refactor write paths in prod (first ticket/followup/cascade after 11:34).
+1. Next GLPI refusal: Tiflux should reopen and keep the técnico
+   ("atribuído de novo" in the log = Tiflux dropped it).
+2. "⏳ Limite" lines are normal (a run uses ~120+ req/min); repeated 429
+   failures are not. Restart the container between runs, not during one.
 3. VPS deploy PAUSED by user (2026-10-07) — don't bring it up until asked.
 
 RISKS:
-- 120 s ≈ 2.5x GLPI requests; watch timeouts. `INTERVALO_SEGUNDOS=300` reverts.
-- Hundreds of GLPI-open tickets would lengthen each run (no cap by design).
-- If VPS resumes: GLPI 302s its IP; two schedulers on one DB = duplicates.
+- 120 s loop ≈ 2.5x GLPI requests; `INTERVALO_SEGUNDOS=300` reverts. Tiflux pacing may stretch a run past 1 min.
+- If VPS resumes: GLPI 302s its IP; two schedulers = duplicates + shared quota.
 
-CONTEXT: specs/003-006, decisions/LOG.md 2026-10-07.
+CONTEXT: specs/003-007, decisions/LOG.md 2026-10-07.
