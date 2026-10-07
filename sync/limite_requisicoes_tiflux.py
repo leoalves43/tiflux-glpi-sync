@@ -16,6 +16,9 @@ ESPERA_MAXIMA_SEGUNDOS = 65.0
 # Usada quando o 429 vem sem RateLimit-Reset legível.
 ESPERA_PADRAO_429_SEGUNDOS = 60.0
 REPETICOES_APOS_429 = 2
+# O relógio do Tiflux fica 1-2 s atrás do nosso: acordar no reset exato dava
+# 429 de novo logo após a virada do minuto (medido em 07/10, 13:36-13:41).
+MARGEM_RELOGIO_SEGUNDOS = 3.0
 
 
 class SessaoHttp(Protocol):
@@ -24,9 +27,10 @@ class SessaoHttp(Protocol):
 
 def segundos_ate_reset(cabecalho_reset: str | None, agora: datetime) -> float | None:
     """
-    Segundos até o `RateLimit-Reset` (ISO 8601 UTC, ex.: "2026-10-07T15:52:00Z"),
-    limitados a [0, ESPERA_MAXIMA_SEGUNDOS]. None se ausente ou ilegível.
-    Ex.: segundos_ate_reset("2026-10-07T15:52:00Z", datetime(2026, 10, 7, 15, 51, 30, tzinfo=timezone.utc)) -> 30.0
+    Segundos até o `RateLimit-Reset` (ISO 8601 UTC, ex.: "2026-10-07T15:52:00Z")
+    mais MARGEM_RELOGIO_SEGUNDOS, limitados a [0, ESPERA_MAXIMA_SEGUNDOS].
+    None se ausente ou ilegível.
+    Ex.: segundos_ate_reset("2026-10-07T15:52:00Z", datetime(2026, 10, 7, 15, 51, 30, tzinfo=timezone.utc)) -> 33.0
     """
     if not cabecalho_reset:
         return None
@@ -34,7 +38,8 @@ def segundos_ate_reset(cabecalho_reset: str | None, agora: datetime) -> float | 
         reset = datetime.fromisoformat(cabecalho_reset.replace("Z", "+00:00"))
     except ValueError:
         return None
-    return min(max((reset - agora).total_seconds(), 0.0), ESPERA_MAXIMA_SEGUNDOS)
+    segundos = (reset - agora).total_seconds() + MARGEM_RELOGIO_SEGUNDOS
+    return min(max(segundos, 0.0), ESPERA_MAXIMA_SEGUNDOS)
 
 
 def _restantes(resposta: requests.Response) -> int | None:

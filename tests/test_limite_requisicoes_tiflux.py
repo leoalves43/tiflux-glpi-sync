@@ -56,8 +56,12 @@ def _sessao(respostas: list[FakeResponse], relogio: FakeRelogio, reserva: int = 
 
 
 class TestSegundosAteReset(unittest.TestCase):
-    def test_calcula_segundos_ate_o_reset(self):
-        self.assertEqual(segundos_ate_reset(_RESET, _INICIO), 30.0)
+    def test_calcula_segundos_ate_o_reset_mais_margem_de_relogio(self):
+        self.assertEqual(segundos_ate_reset(_RESET, _INICIO), 33.0)
+
+    def test_reset_recem_passado_ainda_espera_o_resto_da_margem(self):
+        # Regressão 07/10 13:37:01: relógio do Tiflux 1-2 s atrás do nosso.
+        self.assertEqual(segundos_ate_reset(_RESET, _INICIO + timedelta(seconds=31)), 2.0)
 
     def test_reset_passado_vira_zero(self):
         self.assertEqual(segundos_ate_reset(_RESET, _INICIO + timedelta(minutes=2)), 0.0)
@@ -87,7 +91,7 @@ class TestSessaoTifluxLimitada(unittest.TestCase):
             sessao.get("u1")
             self.assertEqual(self.relogio.esperas, [])  # só a PRÓXIMA chamada espera
             sessao.get("u2")
-        self.assertEqual(self.relogio.esperas, [30.0])
+        self.assertEqual(self.relogio.esperas, [33.0])
 
     def test_espera_da_reserva_desconta_o_tempo_ja_passado(self):
         sessao, _ = _sessao([_resposta(restantes="0"), _resposta()], self.relogio)
@@ -95,7 +99,7 @@ class TestSessaoTifluxLimitada(unittest.TestCase):
             sessao.get("u1")
             self.relogio.atual += timedelta(seconds=20)
             sessao.get("u2")
-        self.assertEqual(self.relogio.esperas, [10.0])
+        self.assertEqual(self.relogio.esperas, [13.0])
 
     def test_reset_ja_passado_nao_espera(self):
         sessao, _ = _sessao([_resposta(restantes="0"), _resposta()], self.relogio)
@@ -109,7 +113,7 @@ class TestSessaoTifluxLimitada(unittest.TestCase):
         with _sem_console():
             resposta = sessao.post("u1", json={"a": 1})
         self.assertEqual(resposta.status_code, 200)
-        self.assertEqual(self.relogio.esperas, [30.0])
+        self.assertEqual(self.relogio.esperas, [33.0])
         self.assertEqual(http.chamadas, [("POST", "u1", {"json": {"a": 1}})] * 2)
 
     def test_429_sem_reset_espera_60s(self):
@@ -136,7 +140,7 @@ class TestSessaoTifluxLimitada(unittest.TestCase):
         saida = io.StringIO()
         with contextlib.redirect_stdout(saida):
             sessao.put("https://api/tickets/1")
-        self.assertEqual(saida.getvalue().count("aguardando 30s"), 1)
+        self.assertEqual(saida.getvalue().count("aguardando 33s"), 1)
         self.assertIn("429 em PUT https://api/tickets/1", saida.getvalue())
 
     def test_resposta_sem_cabecalhos_de_limite_nao_espera(self):
