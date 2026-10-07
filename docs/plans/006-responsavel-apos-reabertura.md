@@ -24,4 +24,4 @@ endpoint novo e sem escrita no banco.
 ## Tasks
 - [x] 1. `restaurar_responsavel_apos_reabertura` + chamada no fluxo de recusa
       + testes dos critérios 1–6. Done: `python -m unittest` verde.
-- [ ] 2. Rebuild do container; LOG, HANDOFF. Done: log do container sem erro.
+- [x] 2. Rebuild do container; LOG, HANDOFF. Done: log do container sem erro.
