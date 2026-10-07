@@ -7,8 +7,10 @@ from sync.cascata_status import (
     STATUS_GLPI_ABERTOS,
     encerrar_em_cascata,
     equalizar_reabertura_manual_do_tiflux,
+    id_responsavel_tiflux,
     reabrir_tiflux_apos_recusa_glpi,
     recusa_glpi_pendente,
+    restaurar_responsavel_apos_reabertura,
     tratar_chamado_fechado_no_glpi,
 )
 from sync.config import Config, log
@@ -75,13 +77,15 @@ def _sincronizar_chamado_aberto_no_glpi(
     numero_tiflux: NumeroTiflux, ticket_tiflux: dict | None, placar: PlacarFollowups,
 ) -> None:
     if recusa_glpi_pendente(conn, config, id_glpi, ticket_tiflux):
-        if not reabrir_tiflux_apos_recusa_glpi(conn, config, tiflux, id_glpi, numero_tiflux, placar):
+        reabriu, ticket_tiflux = _reabrir_tiflux_mantendo_responsavel(
+            conn, config, tiflux, id_glpi, numero_tiflux, ticket_tiflux, placar,
+        )
+        if not reabriu:
             # Tiflux segue fechado: publicar followups daria 422 e o
             # encerramento em cascata desfaria a recusa (GLPI #34759, spec
             # 004). Deixa o GLPI aberto e retenta na próxima execução.
             db_followups.registrar_chamado_aberto_varrido(conn, config, id_glpi, numero_tiflux)
             return
-        ticket_tiflux, _ = tiflux.obter_ticket(numero_tiflux)
 
     _sincronizar_followups_nos_dois_sentidos(conn, config, glpi, tiflux, id_glpi, numero_tiflux, placar)
     db_followups.registrar_chamado_aberto_varrido(conn, config, id_glpi, numero_tiflux)
@@ -90,6 +94,20 @@ def _sincronizar_chamado_aberto_no_glpi(
         encerrar_em_cascata(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_tiflux, placar)
     elif ticket_tiflux:
         equalizar_reabertura_manual_do_tiflux(conn, config, id_glpi, numero_tiflux)
+
+
+def _reabrir_tiflux_mantendo_responsavel(
+    conn: ConexaoDb, config: Config, tiflux: TifluxClient, id_glpi: int,
+    numero_tiflux: NumeroTiflux, ticket_fechado: dict | None, placar: PlacarFollowups,
+) -> tuple[bool, dict | None]:
+    """(reabriu, ticket_atualizado). O responsável é lido do ticket ainda fechado (spec 006)."""
+    if not reabrir_tiflux_apos_recusa_glpi(conn, config, tiflux, id_glpi, numero_tiflux, placar):
+        return False, ticket_fechado
+    ticket_reaberto, _ = tiflux.obter_ticket(numero_tiflux)
+    restaurar_responsavel_apos_reabertura(
+        tiflux, id_glpi, numero_tiflux, id_responsavel_tiflux(ticket_fechado), ticket_reaberto,
+    )
+    return True, ticket_reaberto
 
 
 def _sincronizar_followups_nos_dois_sentidos(

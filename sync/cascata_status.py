@@ -78,6 +78,40 @@ def reabrir_tiflux_apos_recusa_glpi(
     return True
 
 
+def id_responsavel_tiflux(ticket_tiflux: dict | None) -> int | None:
+    """
+    Id do técnico responsável pelo ticket no Tiflux, ou None se não houver.
+    Ex.: id_responsavel_tiflux({"responsible": {"id": 1019979}}) -> 1019979
+    """
+    responsavel = (ticket_tiflux or {}).get("responsible") or {}
+    return responsavel.get("id")
+
+
+def restaurar_responsavel_apos_reabertura(
+    tiflux: TifluxClient, id_glpi: int, numero_tiflux: NumeroTiflux,
+    id_responsavel_anterior: int | None, ticket_reaberto: dict | None,
+) -> None:
+    """
+    Garante que o ticket reaberto pela integração continue com o técnico que
+    era responsável quando estava fechado (spec 006). O Tiflux preserva o
+    responsável na reabertura (observado até 07/10), mas isso não é
+    garantido. Se o GET pós-reabertura falhou (ticket_reaberto None),
+    atribui mesmo assim: a próxima execução não reabre de novo.
+    Ex.: restaurar_responsavel_apos_reabertura(tiflux, 34759, 364160, 1019979, {"responsible": None})
+    """
+    if id_responsavel_anterior is None:
+        return
+    if ticket_reaberto is not None and id_responsavel_tiflux(ticket_reaberto) == id_responsavel_anterior:
+        return
+    sucesso, status_http, corpo = tiflux.atribuir_tecnico(numero_tiflux, id_responsavel_anterior)
+    if sucesso:
+        log(f"Ticket Tiflux #{numero_tiflux} (chamado #{id_glpi}) reaberto sem o responsável anterior "
+            f"— técnico {id_responsavel_anterior} atribuído de novo")
+        return
+    log(f"⚠️ Ticket Tiflux #{numero_tiflux} (chamado #{id_glpi}) reaberto, mas não foi possível atribuir de novo "
+        f"o técnico {id_responsavel_anterior} ({status_http}): {corpo}")
+
+
 def equalizar_reabertura_manual_do_tiflux(
     conn: ConexaoDb, config: Config, id_glpi: int, numero_tiflux: NumeroTiflux,
 ) -> None:

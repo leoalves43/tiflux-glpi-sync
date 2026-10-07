@@ -13,6 +13,8 @@
 - `docs/plans/004-recusa-glpi-sem-reabrir-tiflux.md` — read with the spec above; task checklist.
 - `docs/specs/005-refatoracao.md` — read when refactoring without behavior change (constraints on call order and audit literals).
 - `docs/plans/005-refatoracao.md` — read with the spec above; task checklist.
+- `docs/specs/006-responsavel-apos-reabertura.md` — read when touching who is responsible in Tiflux after the integration reopens a ticket.
+- `docs/plans/006-responsavel-apos-reabertura.md` — read with the spec above; task checklist.
 - `docs/data/audit_tables.toon` — read when writing SQL against either audit table (column names, types, conflict keys).
 
 No other docs exist. A path not listed above does not exist — don't assume it.

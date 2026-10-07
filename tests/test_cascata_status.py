@@ -243,5 +243,56 @@ class TestReaberturaTifluxAposRecusaGlpi(unittest.TestCase):
         ))
 
 
+class TestResponsavelAposReaberturaDoTiflux(unittest.TestCase):
+    """Spec 006: ticket reaberto pela integração mantém o técnico responsável."""
+
+    def setUp(self):
+        self.glpi = FakeGlpiClient()
+        self.tiflux = FakeTifluxClient()
+        self.glpi.tickets[1] = {"status": 1}  # aberto no GLPI de novo (recusa)
+        self.tiflux.ticket_tiflux = {"is_closed": True, "desk": {"id": 37964}, "responsible": {"id": 77}}
+
+    def _sincronizar_recusa(self):
+        conn = FakeConnection(respostas=[[(1, "T-1")], [("encerramento",)], [], []])
+        sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux)
+
+    def test_mesmo_responsavel_apos_reabrir_nao_atribui(self):
+        self._sincronizar_recusa()
+        self.assertEqual(self.tiflux.tecnicos_atribuidos, [])
+
+    def test_reaberto_sem_responsavel_atribui_o_anterior(self):
+        self.tiflux.ticket_apos_reabrir = {"is_closed": False, "desk": {"id": 37964}, "responsible": None}
+        self._sincronizar_recusa()
+        self.assertEqual(self.tiflux.tecnicos_atribuidos, [("T-1", 77)])
+
+    def test_reaberto_com_outro_responsavel_atribui_o_anterior(self):
+        self.tiflux.ticket_apos_reabrir = {"is_closed": False, "desk": {"id": 37964}, "responsible": {"id": 5}}
+        self._sincronizar_recusa()
+        self.assertEqual(self.tiflux.tecnicos_atribuidos, [("T-1", 77)])
+
+    def test_fechado_sem_responsavel_nao_atribui(self):
+        self.tiflux.ticket_tiflux = {"is_closed": True, "desk": {"id": 37964}, "responsible": None}
+        self._sincronizar_recusa()
+        self.assertEqual(self.tiflux.tecnicos_atribuidos, [])
+
+    def test_falha_no_get_apos_reabrir_atribui_mesmo_assim(self):
+        self.tiflux.falhar_get_apos_reabrir = True
+        self._sincronizar_recusa()
+        self.assertEqual(self.tiflux.tecnicos_atribuidos, [("T-1", 77)])
+
+    def test_falha_ao_atribuir_nao_impede_publicar_followups(self):
+        self.tiflux.ticket_apos_reabrir = {"is_closed": False, "desk": {"id": 37964}, "responsible": None}
+        self.tiflux.resultado_atribuir_tecnico = (False, 422, "boom")
+        self.glpi.followups[1] = [{"id": 10, "content": "recusado", "is_private": 0, "users_id": 42}]
+        self.glpi.requerentes[1] = ("Fulano", "f@x.com", 42)
+        self._sincronizar_recusa()
+        self.assertEqual(len(self.tiflux.publicacoes), 1)
+
+    def test_falha_ao_reabrir_nao_atribui(self):
+        self.tiflux.resultado_reabrir_ticket = (False, "Falha ao reabrir ticket no Tiflux (403): nope")
+        self._sincronizar_recusa()
+        self.assertEqual(self.tiflux.tecnicos_atribuidos, [])
+
+
 if __name__ == "__main__":
     unittest.main()

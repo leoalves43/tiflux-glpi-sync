@@ -111,6 +111,11 @@ class FakeTifluxClient:
         self.resposta_publicacao = _FakeHttpResponse(201, {"id": 555})
         self.tickets_reabertos: list[str] = []
         self.resultado_reabrir_ticket: tuple[bool, str | None] = (True, None)
+        # Simula o que o Tiflux devolve no GET depois de reabrir (spec 006):
+        # None mantém o ticket como estava, só que aberto.
+        self.ticket_apos_reabrir: dict | None = None
+        self.falhar_get_apos_reabrir = False
+        self.tecnicos_atribuidos: list[tuple[str, int]] = []
         self.tickets_atualizados: list[dict] = []
         self.inicios_listagem_atualizados: list = []
 
@@ -132,6 +137,7 @@ class FakeTifluxClient:
         return self.resultado_criar_ticket
 
     def atribuir_tecnico(self, ticket_number, id_tecnico):
+        self.tecnicos_atribuidos.append((ticket_number, id_tecnico))
         return self.resultado_atribuir_tecnico
 
     def enviar_anexos(self, ticket_number, anexos):
@@ -158,8 +164,11 @@ class FakeTifluxClient:
     def reabrir_ticket(self, ticket_number, motivo_reprovacao):
         self.tickets_reabertos.append((ticket_number, motivo_reprovacao))
         sucesso, erro = self.resultado_reabrir_ticket
-        if sucesso and self.ticket_tiflux is not None:
-            self.ticket_tiflux = {**self.ticket_tiflux, "is_closed": False}
+        if not sucesso or self.ticket_tiflux is None:
+            return sucesso, erro
+        self.ticket_tiflux = self.ticket_apos_reabrir or {**self.ticket_tiflux, "is_closed": False}
+        if self.falhar_get_apos_reabrir:
+            self.ticket_tiflux = None
         return sucesso, erro
 
 
