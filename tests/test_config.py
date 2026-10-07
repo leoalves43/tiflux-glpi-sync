@@ -49,6 +49,14 @@ class TestConfigCarregar(unittest.TestCase):
         config = Config.carregar(self.caminho_env, ambiente={"RESERVA_REQUISICOES_TIFLUX": "10"})
         self.assertEqual(config.reserva_requisicoes_tiflux, 10)
 
+    def test_chaves_da_spec_008_vem_do_ambiente_ou_padrao(self):
+        padrao = Config.carregar(self.caminho_env, ambiente={})
+        self.assertEqual((padrao.margem_checkpoint_tiflux_minutos, padrao.varredura_completa_por_execucao), (5, 1))
+        config = Config.carregar(
+            self.caminho_env, ambiente={"MARGEM_CHECKPOINT_TIFLUX_MINUTOS": "10", "VARREDURA_COMPLETA_POR_EXECUCAO": "3"},
+        )
+        self.assertEqual((config.margem_checkpoint_tiflux_minutos, config.varredura_completa_por_execucao), (10, 3))
+
 
 if __name__ == "__main__":
     unittest.main()

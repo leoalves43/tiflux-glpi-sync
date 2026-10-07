@@ -12,15 +12,15 @@ api_glpi_tiflux_followups[12]{column,type,nullable,default,note}:
   id,SERIAL,false,-,pkey
   id_glpi,INTEGER,false,-,ticket this followup belongs to
   numero_tiflux,INTEGER,true,-,-
-  direcao,VARCHAR(20),false,-,glpi_para_tiflux|tiflux_para_glpi|verificacao_status
-  tipo,VARCHAR(20),false,-,publica|interna|status|encerramento|reabertura|reabertura_tiflux
-  id_origem,INTEGER,false,-,part of unique conflict key (direcao,id_origem); negative -id_glpi sentinel: verificacao_status scan marker; tiflux_para_glpi cascade state; glpi_para_tiflux Tiflux-reopen attempt (spec 004)
+  direcao,VARCHAR(20),false,-,glpi_para_tiflux|tiflux_para_glpi|verificacao_status|checkpoint_tiflux|varredura_completa (last two: spec 008 marker rows)
+  tipo,VARCHAR(20),false,-,publica|interna|status|encerramento|reabertura|reabertura_tiflux|checkpoint
+  id_origem,INTEGER,false,-,part of unique conflict key (direcao,id_origem); negative -id_glpi sentinel: verificacao_status scan marker; tiflux_para_glpi cascade state; glpi_para_tiflux Tiflux-reopen attempt (spec 004); varredura_completa safety-sweep marker. checkpoint_tiflux: single row id_glpi=0 id_origem=0
   id_destino,INTEGER,true,-,set only on success; null on error
-  status,VARCHAR(20),false,-,sucesso|erro|fechado|solucionado|aberto (last three: verificacao_status scan marker; only fechado is batch-limited)
-  mensagem,TEXT,true,-,-
+  status,VARCHAR(20),false,-,sucesso|erro|fechado|solucionado|aberto|marcador (fechado/solucionado/aberto: verificacao_status scan marker, only fechado is batch-limited; marcador: spec 008 rows)
+  mensagem,TEXT,true,-,checkpoint_tiflux row: ISO 8601 UTC start of the last fully-read run
   tentativas,INTEGER,false,1,incremented on ON CONFLICT UPDATE
   criado_em,TIMESTAMP,false,now(),-
-  atualizado_em,TIMESTAMP,false,now(),used by obter_chamados_para_varrer_followups' MAX() rotation
+  atualizado_em,TIMESTAMP,false,now(),local time without tz; used by obter_chamados_para_varrer_followups' MAX() rotation
 
 indexes[3]{table,name,columns}:
   api_glpi_tiflux,idx_api_glpi_tiflux_status,status

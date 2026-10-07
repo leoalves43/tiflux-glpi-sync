@@ -1,6 +1,8 @@
 """Postgres — tabela de auditoria de followups (várias linhas por chamado)."""
 
-from sync.config import Config
+from datetime import datetime
+
+from sync.config import Config, log
 from sync.tipos import ConexaoDb, NumeroTiflux
 
 
@@ -218,4 +220,77 @@ def _registrar_verificacao_status(
     """Linha única por chamado (direcao='verificacao_status', id_origem=-id_glpi); o upsert atualiza atualizado_em a cada varredura."""
     registrar_resultado_followup(
         conn, config, id_glpi, numero_tiflux, "verificacao_status", "status", -id_glpi, None, status, mensagem,
+    )
+
+
+# Linhas marcadoras da spec 008. status próprio ('marcador') pra nunca casar
+# com os filtros por status='sucesso' das outras consultas.
+_DIRECAO_CHECKPOINT = "checkpoint_tiflux"
+_DIRECAO_VARREDURA_COMPLETA = "varredura_completa"
+_STATUS_MARCADOR = "marcador"
+
+
+def obter_checkpoint_tiflux(conn: ConexaoDb, config: Config) -> datetime | None:
+    """
+    Início (UTC) da última execução cujo panorama do Tiflux foi lido por
+    inteiro (spec 008). None se nunca houve, ou se o valor gravado está ilegível.
+    Ex.: obter_checkpoint_tiflux(conn, config) -> datetime(2026, 10, 7, 19, 30, tzinfo=timezone.utc)
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            f"SELECT mensagem FROM {config.tabela_followups} WHERE direcao = %s AND id_origem = 0",
+            (_DIRECAO_CHECKPOINT,),
+        )
+        linha = cur.fetchone()
+    if not linha:
+        return None
+    try:
+        return datetime.fromisoformat(linha[0])
+    except (TypeError, ValueError):
+        log(f"⚠️ Checkpoint do Tiflux ilegível ({linha[0]!r}, esperado ISO 8601 UTC) — usando a janela padrão")
+        return None
+
+
+def registrar_checkpoint_tiflux(conn: ConexaoDb, config: Config, inicio_utc: datetime) -> None:
+    """
+    Grava o checkpoint numa linha única (id_glpi=0, id_origem=0), ISO 8601 UTC
+    em `mensagem` — `atualizado_em` é hora local sem fuso e não serve.
+    Ex.: registrar_checkpoint_tiflux(conn, config, datetime.now(timezone.utc))
+    """
+    registrar_resultado_followup(
+        conn, config, 0, None, _DIRECAO_CHECKPOINT, "checkpoint", 0, None, _STATUS_MARCADOR, inicio_utc.isoformat(),
+    )
+
+
+def obter_chamados_para_varredura_completa(conn: ConexaoDb, config: Config, quantidade: int) -> list[tuple[int, int]]:
+    """
+    Pares (id_glpi, numero_tiflux) dos `quantidade` chamados status='sucesso'
+    conferidos por completo há mais tempo (nunca conferidos primeiro).
+    Ex.: obter_chamados_para_varredura_completa(conn, config, 1) -> [(34759, 364160)]
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            SELECT t.id_glpi, t.numero_tiflux
+            FROM {config.tabela_auditoria} t
+            LEFT JOIN {config.tabela_followups} v
+              ON v.direcao = %s AND v.id_origem = -t.id_glpi
+            WHERE t.status = 'sucesso' AND t.numero_tiflux IS NOT NULL
+            ORDER BY v.atualizado_em ASC NULLS FIRST, t.id_glpi ASC
+            LIMIT %s
+            """,
+            (_DIRECAO_VARREDURA_COMPLETA, quantidade),
+        )
+        return [(id_glpi, numero) for id_glpi, numero in cur.fetchall()]
+
+
+def registrar_varredura_completa(conn: ConexaoDb, config: Config, id_glpi: int, numero_tiflux: NumeroTiflux) -> None:
+    """
+    Marca o chamado como conferido por completo agora (linha única por chamado,
+    id_origem=-id_glpi), mandando-o pro fim da fila da varredura de segurança.
+    Ex.: registrar_varredura_completa(conn, config, 34759, 364160)
+    """
+    registrar_resultado_followup(
+        conn, config, id_glpi, numero_tiflux, _DIRECAO_VARREDURA_COMPLETA, "status", -id_glpi, None,
+        _STATUS_MARCADOR, "Chamado conferido por completo (varredura de segurança, spec 008)",
     )

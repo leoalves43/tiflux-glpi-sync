@@ -1,4 +1,7 @@
+import contextlib
+import io
 import unittest
+from datetime import datetime, timezone
 
 from sync import db_followups
 from sync.config import Config
@@ -143,6 +146,45 @@ class TestRegistrarChamadoAbertoVarrido(unittest.TestCase):
         id_glpi, numero_tiflux, direcao, tipo, id_origem, id_destino, status, _mensagem = params
         self.assertEqual((id_glpi, numero_tiflux, direcao, tipo, id_origem, id_destino, status),
                           (42, 363403, "verificacao_status", "status", -42, None, "aberto"))
+
+
+class TestCheckpointTiflux(unittest.TestCase):
+    _INICIO = datetime(2026, 10, 7, 19, 30, 5, tzinfo=timezone.utc)
+
+    def test_sem_linha_retorna_none(self):
+        self.assertIsNone(db_followups.obter_checkpoint_tiflux(FakeConnection(respostas=[[]]), _CONFIG))
+
+    def test_grava_e_le_iso_utc(self):
+        conn = FakeConnection()
+        db_followups.registrar_checkpoint_tiflux(conn, _CONFIG, self._INICIO)
+        params = conn.execucoes[0][1]
+        self.assertEqual(params[:5], (0, None, "checkpoint_tiflux", "checkpoint", 0))
+        self.assertEqual(params[6:], ("marcador", "2026-10-07T19:30:05+00:00"))
+        lido = db_followups.obter_checkpoint_tiflux(FakeConnection(respostas=[[(params[7],)]]), _CONFIG)
+        self.assertEqual(lido, self._INICIO)
+
+    def test_valor_ilegivel_retorna_none(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            lido = db_followups.obter_checkpoint_tiflux(FakeConnection(respostas=[[("ontem",)]]), _CONFIG)
+        self.assertIsNone(lido)
+
+
+class TestVarreduraCompleta(unittest.TestCase):
+    def test_mais_antigos_primeiro_com_limite(self):
+        conn = FakeConnection(respostas=[[(34759, 364160)]])
+        pares = db_followups.obter_chamados_para_varredura_completa(conn, _CONFIG, 1)
+        self.assertEqual(pares, [(34759, 364160)])
+        sql, params = conn.execucoes[0]
+        self.assertIn("ORDER BY v.atualizado_em ASC NULLS FIRST", " ".join(sql.split()))
+        self.assertEqual(params, ("varredura_completa", 1))
+
+    def test_registra_marca_por_chamado(self):
+        conn = FakeConnection()
+        db_followups.registrar_varredura_completa(conn, _CONFIG, 34759, 364160)
+        params = conn.execucoes[0][1]
+        self.assertEqual(params[:5], (34759, 364160, "varredura_completa", "status", -34759))
+        self.assertEqual(params[6], "marcador")
+
 
 if __name__ == "__main__":
     unittest.main()

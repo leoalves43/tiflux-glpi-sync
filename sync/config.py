@@ -138,6 +138,15 @@ class Config:
     # espera a virada do minuto (spec 007). Folga pra uso manual do mesmo token.
     reserva_requisicoes_tiflux: int = 5
 
+    # Spec 008: a listagem de tickets atualizados recomeça do checkpoint menos
+    # esta margem (relógio do Tiflux 1-2 s atrás; repetir é inofensivo, a
+    # auditoria deduplica). Sem checkpoint, usa janela_mudancas_status_tiflux_minutos.
+    margem_checkpoint_tiflux_minutos: int = 5
+    # Chamados conferidos por completo (GET individual + respostas) por
+    # execução, como rede de segurança da listagem. 1 x ~480 execuções/dia
+    # cobre ~480 chamados por dia.
+    varredura_completa_por_execucao: int = 1
+
     @staticmethod
     def carregar(caminho_credenciais: str = ".env", ambiente: Mapping[str, str] | None = None) -> "Config":
         """
@@ -164,4 +173,6 @@ class Config:
             tabela_auditoria=f"{db_schema}.{db_table}",
             tabela_followups=f"{db_schema}.{db_table_followups}",
             reserva_requisicoes_tiflux=inteiro_nao_negativo(cred, "RESERVA_REQUISICOES_TIFLUX", 5),
+            margem_checkpoint_tiflux_minutos=inteiro_nao_negativo(cred, "MARGEM_CHECKPOINT_TIFLUX_MINUTOS", 5),
+            varredura_completa_por_execucao=inteiro_nao_negativo(cred, "VARREDURA_COMPLETA_POR_EXECUCAO", 1),
         )
