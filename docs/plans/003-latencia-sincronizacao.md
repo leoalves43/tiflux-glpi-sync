@@ -46,6 +46,6 @@ o que limita). Loop: padrão 300 -> 120 s.
       depois no máximo 50 `fechado`. Done: saída confere (critérios 1–5).
 - [x] 3. Intervalo 300 -> 120 em `loop_sincronizacao.sh` e `docker-compose.yml`;
       README/ARCHITECTURE. Done: `grep -rn 300` sem menção ao intervalo antigo.
-- [ ] 4. `docker compose up -d --build`; acompanhar 2 ciclos no log
+- [x] 4. `docker compose up -d --build`; acompanhar 2 ciclos no log
       (intervalo ~2 min, sem erros). Done: log confere.
-- [ ] 5. LOG.md, HANDOFF.md. Done: docs dentro dos limites de tamanho.
+- [x] 5. LOG.md, HANDOFF.md. Done: docs dentro dos limites de tamanho.

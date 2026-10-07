@@ -6,9 +6,9 @@ DONE (2026-10-07), local container rebuilt, 277 tests green:
   logs a warning and retries every run (was re-closing GLPI, #34759).
 
 NEXT:
-1. Reopen Tiflux #364160 by hand (API token gets 403 on fully closed tickets);
+1. Tiflux #364160 needs reopening: API + user both get 403 on fully closed;
    the integration then reopens GLPI #34759 and posts followup 77817.
-2. Ask Tiflux again for the "review closed tickets" permission on the API user.
+2. Tiflux admin: grant "Revisar e avaliar tickets fechados" to API user (or relink #34759).
 3. VPS `git pull`; after GLPI allows the VPS IP: `docker compose stop`
    locally, `up -d --build` on VPS.
 
