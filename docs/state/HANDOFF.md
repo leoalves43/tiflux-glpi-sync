@@ -9,7 +9,7 @@ DONE (2026-10-07), local container rebuilt, 297 tests green (3.14 + 3.13):
 NEXT:
 1. Tiflux permission "Revisar e avaliar tickets fechados" requested for the
    API user. #34759 closed by hand in GLPI; followup 77817 marked handled.
-2. VPS `git pull`; after GLPI allows the VPS IP: `docker compose stop`
+2. `git push` (003-005 are local only), then VPS `git pull`; after GLPI allows the VPS IP: `docker compose stop`
    locally, `up -d --build` on VPS.
 
 RISKS:
