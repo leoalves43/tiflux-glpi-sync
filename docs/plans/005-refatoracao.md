@@ -24,7 +24,7 @@ de `test_sincronizacao_followups.py`), `docs/ARCHITECTURE.md`,
 - [x] 1. Extrair `cascata_status.py` e `publicacao_followups.py`; atualizar
       importadores (`main`, `encerrar_legado`, `forcar_sincronizacao`, testes).
       Done: testes verdes, arquivos < 500.
-- [ ] 2. Dividir `tests/test_sincronizacao_followups.py` por módulo (classes
+- [x] 2. Dividir `tests/test_sincronizacao_followups.py` por módulo (classes
       movidas sem alteração). Done: mesma contagem de testes, verdes.
 - [ ] 3. `PlacarFollowups` no lugar do dict `totais`. Done: verdes; log igual.
 - [ ] 4. Tipos: alias `ConexaoDb`, `NumeroTiflux = int | str`, `-> None` em
