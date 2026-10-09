@@ -105,22 +105,22 @@ class TestProcessarChamado(unittest.TestCase):
         self.assertIn("solução de contorno.<br><br>Solicitante:", descricao)
         self.assertIn("&gt;<br><br>Descrição:<br>desc", descricao)
 
-    def test_sucesso_volta_status_para_novo_no_glpi_apos_atribuir_tecnico(self):
+    def test_sucesso_deixa_pendente_no_glpi_apos_atribuir_tecnico(self):
         """
         Atribuir técnico (Ticket_User) faz o GLPI mudar o status pra
-        "Processando (atribuído)" automaticamente; a integração deve
-        restaurar pra Novo depois.
+        "Processando (atribuído)" automaticamente; a integração deixa
+        Pendente depois (spec 009, AC 11 — antes voltava pra Novo).
         """
         self.glpi.tickets[1] = _TICKET_ARRECADACAO
         processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
-        self.assertEqual(self.glpi.status_restaurados_para_novo, [1])
+        self.assertEqual(self.glpi.chamados_deixados_pendentes, [1])
 
-    def test_falha_ao_voltar_status_para_novo_nao_derruba_sincronizacao(self):
+    def test_falha_ao_deixar_pendente_nao_derruba_sincronizacao(self):
         self.glpi.tickets[1] = _TICKET_ARRECADACAO
-        self.glpi.resultado_voltar_status_para_novo = (False, "boom")
+        self.glpi.resultado_definir_status_pendente = (False, "boom")
         status, numero, msg = processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
         self.assertEqual((status, numero), ("sucesso", "T-1"))
-        self.assertIn("falha ao voltar status para Novo", msg)
+        self.assertIn("falha ao deixar Pendente", msg)
 
     def test_sucesso_atribui_tecnico_leo_no_glpi_para_mesa_arrecadacao(self):
         self.glpi.tickets[1] = _TICKET_ARRECADACAO

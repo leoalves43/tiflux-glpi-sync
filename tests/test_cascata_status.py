@@ -149,11 +149,12 @@ class TestReaberturaEmCascata(unittest.TestCase):
         self.tiflux = FakeTifluxClient()
         self.glpi.tickets[1] = {"status": 5}  # Solucionado — presumivelmente por cascata anterior
 
-    def test_reaberto_no_tiflux_reabre_no_glpi_como_processando(self):
+    def test_reaberto_no_tiflux_reabre_no_glpi_como_pendente(self):
+        """Spec 009, AC 12: reabertura em cascata deixa Pendente (4), não mais Processando (2)."""
         self.tiflux.ticket_tiflux = {"is_closed": False, "desk": {"id": 37964}}
         conn = FakeConnection(respostas=[[(1, "T-1")]])
         sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste(abertos=("T-1",)))
-        self.assertEqual(self.glpi.chamados_encerrados, [(1, 2)])
+        self.assertEqual(self.glpi.chamados_encerrados, [(1, 4)])
         sql, params = conn.execucoes[-1]
         self.assertIn("reabertura", params)
         self.assertIn("sucesso", params)

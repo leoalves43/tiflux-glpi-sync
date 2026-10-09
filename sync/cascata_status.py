@@ -7,6 +7,7 @@ from sync.config import Config, log
 from sync.glpi_client import GlpiClient
 from sync.placar_followups import PlacarFollowups
 from sync.publicacao_followups import prefixar_autor_tiflux, resposta_criada_pela_integracao
+from sync.glpi_client import STATUS_GLPI_PENDENTE
 from sync.regras_negocio import definir_autor_glpi
 from sync.tiflux_client import TifluxClient
 from sync.tipos import ConexaoDb, NumeroTiflux
@@ -22,8 +23,9 @@ STATUS_GLPI_SOLUCIONADO = 5
 
 
 # Status pra onde o chamado GLPI volta quando um encerramento em cascata
-# anterior é desfeito porque o ticket foi reaberto no Tiflux
-STATUS_GLPI_REABERTO = 2  # Processando (atribuído)
+# anterior é desfeito porque o ticket foi reaberto no Tiflux — Pendente por
+# regra do usuário (spec 009); antes era 2, Processando (atribuído)
+STATUS_GLPI_REABERTO = STATUS_GLPI_PENDENTE
 
 
 def recusa_glpi_pendente(conn: ConexaoDb, config: Config, id_glpi: int, ticket_tiflux: dict | None) -> bool:
@@ -139,7 +141,7 @@ def tratar_chamado_fechado_no_glpi(
     Chamado já não está mais "aberto" no GLPI. Normalmente é porque um
     encerramento em cascata anterior já rodou (status Solucionado) — nesse
     caso, se o ticket foi REABERTO no Tiflux nesse meio tempo, desfaz o
-    encerramento (volta pra Processando) pra followups voltarem a sincronizar
+    encerramento (volta pra Pendente) pra followups voltarem a sincronizar
     na próxima execução. Fechamentos manuais no GLPI (ex.: status Fechado,
     feito por um técnico direto lá) não são mexidos — só reabrimos o que a
     própria integração fechou.
@@ -152,7 +154,7 @@ def tratar_chamado_fechado_no_glpi(
     if reabrir:
         _mudar_status_em_cascata(
             conn, config, glpi, id_glpi, numero_tiflux, STATUS_GLPI_REABERTO, "reabertura",
-            f"Chamado #{id_glpi} reaberto no GLPI (status Processando) — reaberto no Tiflux #{numero_tiflux}",
+            f"Chamado #{id_glpi} reaberto no GLPI (status Pendente) — reaberto no Tiflux #{numero_tiflux}",
             placar,
         )
         return

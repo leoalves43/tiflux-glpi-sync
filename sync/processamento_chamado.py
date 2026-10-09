@@ -108,7 +108,7 @@ def _completar_apos_criacao(
     """Passos pós-criação que não derrubam o chamado; devolve os avisos na ordem do log (anexos primeiro)."""
     aviso_titulo = _atualizar_titulo_glpi(glpi, id_chamado, ticket.get("name"), ticket_number_tiflux)
     aviso_tecnico_glpi = _atribuir_tecnico_glpi(glpi, id_chamado, config, ticket_number_tiflux)
-    aviso_status_glpi = _restaurar_status_novo_glpi(glpi, id_chamado, ticket_number_tiflux)
+    aviso_status_glpi = _deixar_pendente_glpi(glpi, id_chamado, ticket_number_tiflux)
     resumo_anexos = _sincronizar_anexos(glpi, tiflux, config, id_chamado, ticket_number_tiflux)
     return f"{resumo_anexos}{aviso_titulo}{aviso_tecnico_glpi}{aviso_status_glpi}"
 
@@ -251,17 +251,18 @@ def _atribuir_tecnico_glpi(glpi: GlpiClient, id_chamado: int, config: Config, ti
     return " | Aviso: falha ao atribuir técnico no GLPI"
 
 
-def _restaurar_status_novo_glpi(glpi: GlpiClient, id_chamado: int, ticket_number_tiflux: str) -> str:
+def _deixar_pendente_glpi(glpi: GlpiClient, id_chamado: int, ticket_number_tiflux: str) -> str:
     """
     Atribuir o técnico (acima) faz o GLPI mudar o status pra "Processando
-    (atribuído)" automaticamente. Volta pra Novo, mesmo motivo do título e do
-    técnico: falha aqui não derruba a sincronização.
+    (atribuído)" automaticamente; o chamado fica Pendente (spec 009 — antes
+    voltava pra Novo). Mesmo motivo do título e do técnico: falha aqui não
+    derruba a sincronização.
     """
-    sucesso, erro = glpi.voltar_status_para_novo(id_chamado)
+    sucesso, erro = glpi.definir_status_pendente(id_chamado)
     if sucesso:
         return ""
-    log(f"⚠️ Ticket #{ticket_number_tiflux} criado, mas falhou ao voltar status para Novo no GLPI: {erro}")
-    return " | Aviso: falha ao voltar status para Novo no GLPI"
+    log(f"⚠️ Ticket #{ticket_number_tiflux} criado, mas falhou ao deixar Pendente no GLPI: {erro}")
+    return " | Aviso: falha ao deixar Pendente no GLPI"
 
 
 def texto_para_html_tiflux(texto: str) -> str:

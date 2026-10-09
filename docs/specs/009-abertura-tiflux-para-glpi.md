@@ -12,7 +12,7 @@ execução seguinte, já vinculado: respostas, encerramento e reabertura passam 
 ser sincronizados como nos chamados abertos pelo GLPI.
 
 ## Regras de preenchimento no GLPI
-- Entidade: sempre PMC.
+- Entidade: sempre STII (1), filha de PMC — a localização 1685 só vale nela.
 - Categoria pela mesa do Tiflux (de-para inverso):
   | Mesa Tiflux | Categoria GLPI |
   |---|---|
@@ -57,7 +57,7 @@ ser sincronizados como nos chamados abertos pelo GLPI.
 
 ## Acceptance criteria
 1. Ticket novo no Tiflux na mesa ARRECADAÇÃO -> na execução seguinte existe
-   um chamado no GLPI com entidade PMC, categoria 272, origem 6, localização
+   um chamado no GLPI com entidade STII (1), categoria 272, origem 6, localização
    1685, observador grupo 22, técnico 4988, título `#<numero_tiflux> -
    <titulo>`, prioridade 3, status Pendente, e o vínculo registrado na auditoria.
 2. Solicitante com e-mail cadastrado no GLPI vira o requerente; e-mail sem

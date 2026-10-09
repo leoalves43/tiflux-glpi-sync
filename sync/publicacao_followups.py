@@ -208,7 +208,7 @@ def _publicar_respostas_publicas(
         conteudo = prefixar_autor_tiflux(resposta.get("author"), resposta.get("answer_time"), conteudo)
         id_criado, erro = glpi.criar_followup(id_chamado, conteudo, is_private=0, users_id=id_autor_glpi)
         if id_criado is not None:
-            _restaurar_status_novo_glpi(glpi, id_chamado)
+            _deixar_pendente_glpi(glpi, id_chamado)
         sucesso = _registrar_followup_tiflux_para_glpi(
             conn, config, id_chamado, numero_tiflux, "publica", id_origem, id_criado, erro,
             mensagem_sucesso=f"Resposta Tiflux #{id_origem} publicada como followup no GLPI (id {id_criado})",
@@ -223,15 +223,16 @@ def _deve_ignorar_resposta_publica(resposta: dict, ja_processados_ou_proprios: s
     return resposta_criada_pela_integracao(resposta)
 
 
-def _restaurar_status_novo_glpi(glpi: GlpiClient, id_glpi: int) -> None:
+def _deixar_pendente_glpi(glpi: GlpiClient, id_glpi: int) -> None:
     """
     Criar o followup (acima) faz o GLPI mudar o status pra "Processando
-    (atribuído)" automaticamente. Volta pra Novo; só loga se falhar — não
-    afeta o registro do followup em si, que já foi criado com sucesso.
+    (atribuído)" automaticamente; o chamado fica Pendente (spec 009 — antes
+    voltava pra Novo). Só loga se falhar — não afeta o registro do followup
+    em si, que já foi criado com sucesso.
     """
-    sucesso, erro = glpi.voltar_status_para_novo(id_glpi)
+    sucesso, erro = glpi.definir_status_pendente(id_glpi)
     if not sucesso:
-        log(f"⚠️ Followup criado no chamado #{id_glpi}, mas falhou ao voltar status para Novo no GLPI: {erro}")
+        log(f"⚠️ Followup criado no chamado #{id_glpi}, mas falhou ao deixar Pendente no GLPI: {erro}")
 
 
 def _registrar_followup_tiflux_para_glpi(

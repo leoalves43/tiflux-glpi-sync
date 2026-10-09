@@ -207,17 +207,17 @@ class TestSincronizarFollowupsTifluxParaGlpi(unittest.TestCase):
         sucesso, erro = sincronizar_followups_tiflux_para_glpi(self.conn, _CONFIG, self.glpi, self.tiflux, 1, "T-1")
         self.assertEqual((sucesso, erro), (0, 1))
 
-    def test_followup_criado_com_sucesso_volta_status_para_novo_no_glpi(self):
-        """Criar o followup faz o GLPI mudar o status pra "Processando (atribuído)" automaticamente; deve voltar pra Novo."""
+    def test_followup_criado_com_sucesso_deixa_pendente_no_glpi(self):
+        """Criar o followup faz o GLPI mudar o status pra "Processando (atribuído)" automaticamente; deve ficar Pendente (spec 009)."""
         self.tiflux.respostas = [{"id": 1, "name": "resp"}]
         sincronizar_followups_tiflux_para_glpi(self.conn, _CONFIG, self.glpi, self.tiflux, 1, "T-1")
-        self.assertEqual(self.glpi.status_restaurados_para_novo, [1])
+        self.assertEqual(self.glpi.chamados_deixados_pendentes, [1])
 
     def test_falha_ao_criar_followup_nao_tenta_voltar_status(self):
         self.tiflux.respostas = [{"id": 1, "name": "resp"}]
         self.glpi.erro_ao_criar_followup = "Falha ao criar followup no GLPI (500): boom"
         sincronizar_followups_tiflux_para_glpi(self.conn, _CONFIG, self.glpi, self.tiflux, 1, "T-1")
-        self.assertEqual(self.glpi.status_restaurados_para_novo, [])
+        self.assertEqual(self.glpi.chamados_deixados_pendentes, [])
 
 
 if __name__ == "__main__":

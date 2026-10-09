@@ -26,6 +26,10 @@ TAMANHO_LOTE_SONDAGEM_PADRAO = 10
 # do usuário no GLPI vem do AD sem telefone; o contato só existe aqui.
 _ITEMTYPE_TELEFONE_CHAMADO = "PluginFieldsTickettelefonelinha"
 
+# Status do chamado (não da ITILSolution, ver _STATUS_SOLUCAO_RECUSADA) em que
+# a integração deixa todo chamado que cria, reabre ou responde (spec 009).
+STATUS_GLPI_PENDENTE = 4
+
 
 def _mensagem_de_recusa(resp: requests.Response) -> str | None:
     """
@@ -220,17 +224,17 @@ class GlpiClient:
         """
         return self._atualizar_chamado(id_chamado, {"status": status}, "encerrar")
 
-    def voltar_status_para_novo(self, id_chamado: int) -> tuple[bool, str | None]:
+    def definir_status_pendente(self, id_chamado: int) -> tuple[bool, str | None]:
         """
-        PUT /Ticket/{id} forçando status=1 (Novo). Esta instalação do GLPI
-        muda o status pra "Processando (atribuído)" automaticamente sempre
-        que um Ticket_User é criado (atribuir_tecnico) ou um followup é
-        adicionado (criar_followup) — comportamento padrão do GLPI ao
-        registrar um ator/interação, não uma escolha desta integração. Chame
-        depois de qualquer uma dessas duas operações pra manter o chamado em
-        Novo até um técnico humano decidir mudar. Retorna (sucesso, erro_ou_None).
+        PUT /Ticket/{id} forçando status=4 (Pendente) — regra do usuário (spec
+        009): chamado tocado pela integração fica sempre Pendente. Esta
+        instalação do GLPI muda o status pra "Processando (atribuído)"
+        automaticamente sempre que um Ticket_User é criado (atribuir_tecnico)
+        ou um followup é adicionado (criar_followup), então chame depois de
+        qualquer uma dessas operações. Retorna (sucesso, erro_ou_None).
+        Ex.: glpi.definir_status_pendente(34900) -> (True, None)
         """
-        return self._atualizar_chamado(id_chamado, {"status": 1}, "voltar status para Novo do")
+        return self._atualizar_chamado(id_chamado, {"status": STATUS_GLPI_PENDENTE}, "deixar Pendente o")
 
     def atualizar_titulo(self, id_chamado: int, titulo: str) -> tuple[bool, str | None]:
         """

@@ -3,11 +3,12 @@
 Spec: `docs/specs/009-abertura-tiflux-para-glpi.md`.
 
 ## Fatos verificados (leitura, 2026-10-09)
-- Entidade PMC = 0 (raiz; perfil "Técnico" da API tem 0 recursiva).
+- Entidade do chamado = STII (1), decisão do usuário (localização 1685 é da
+  entidade 1, não recursiva). Perfil "Técnico" da API vê 0 recursiva.
 - Categorias 267/272/277/282: entidade 0, recursivas, incidente e requisição.
 - Grupo 22: entidade 0 recursivo. Origem 6 "STI" existe.
-- Localização 1685 "Área Técnica" está na entidade 1 (STII), NÃO recursiva —
-  pode não valer num chamado da entidade 0 (ver Riscos).
+- Localização 1685 "Área Técnica" está na entidade 1 (STII), NÃO recursiva
+  — por isso o chamado é criado na entidade 1.
 - `UserEmail?searchText[email]=` acha usuário por e-mail (LIKE: comparar exato).
 - Telefone (plugin): `PluginFieldsTickettelefonelinha`, container 3, campo
   `telefonefield`, dados existentes em dígitos (`12981345555`).
@@ -56,12 +57,12 @@ chamadas novas vão para módulos novos.
 - IRREVERSÍVEL: criação de chamados reais no GLPI, renomear tickets no
   Tiflux, backfill Novo -> Pendente. Cada escrita ao vivo pede OK antes.
 - Requerente real recebe o e-mail de chamado novo do GLPI.
-- Localização 1685 fora da entidade 0: conferir no 1º chamado de teste.
+- Conferir no 1º chamado de teste que entidade 1 + localização 1685 gravaram.
 - Container de produção roda `main`: testes ao vivo com o container parado
   ou só via entrypoint manual, nunca os dois juntos.
 
 ## Tarefas
-- [ ] 1. Status Pendente: criação GLPI -> Tiflux e reabertura em cascata
+- [x] 1. Status Pendente: criação GLPI -> Tiflux e reabertura em cascata
   usam 4. Files: glpi_client, processamento_chamado, cascata_status, testes.
   Done: testes verdes; nenhum `status: 1` restante.
 - [ ] 2. Guarda `#<n> - ` no caminho GLPI -> Tiflux. Files:

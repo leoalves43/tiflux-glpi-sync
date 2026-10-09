@@ -292,21 +292,21 @@ class TestAtualizarTitulo(unittest.TestCase):
         self.assertIn("campo bloqueado", erro)
 
 
-class TestVoltarStatusParaNovo(unittest.TestCase):
-    def test_sucesso_manda_status_1(self):
+class TestDefinirStatusPendente(unittest.TestCase):
+    def test_sucesso_manda_status_4(self):
         fake = FakeRequests()
         fake.programar("PUT", "/Ticket/1", FakeResponse(200, {}))
         with patch("sync.glpi_client.requests", fake):
-            sucesso, erro = _client(fake).voltar_status_para_novo(1)
+            sucesso, erro = _client(fake).definir_status_pendente(1)
         self.assertEqual((sucesso, erro), (True, None))
         _, _, kwargs = fake.chamadas[-1]
-        self.assertEqual(kwargs["json"]["input"]["status"], 1)
+        self.assertEqual(kwargs["json"]["input"]["status"], 4)
 
     def test_falha_http_retorna_erro(self):
         fake = FakeRequests()
         fake.programar("PUT", "/Ticket/1", FakeResponse(400, text="bad request"))
         with patch("sync.glpi_client.requests", fake):
-            sucesso, erro = _client(fake).voltar_status_para_novo(1)
+            sucesso, erro = _client(fake).definir_status_pendente(1)
         self.assertFalse(sucesso)
         self.assertIn("400", erro)
 
