@@ -18,6 +18,6 @@ testes correspondentes, `README.md`, `docs/decisions/LOG.md`, HANDOFF.
 ## Tarefas
 - [x] 1. De-para nos dois sentidos + prioridade da mesa 38853. Done: testes.
 - [x] 2. Filtro de cliente no candidato à abertura. Done: teste AC 3.
-- [ ] 3. `--ignorar-corte` no CLI. Done: teste AC 4.
+- [x] 3. `--ignorar-corte` no CLI. Done: teste AC 4.
 - [ ] 4. Deploy, importar os 2 tickets, conferir respostas e eco. Done: AC 5.
 - [ ] 5. README, LOG, HANDOFF.

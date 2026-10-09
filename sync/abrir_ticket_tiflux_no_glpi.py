@@ -5,11 +5,16 @@ Sem --aplicar só lê (Tiflux, GLPI e auditoria) e imprime o que seria enviado
 ao GLPI. Com --aplicar abre de verdade, pelo mesmo caminho do cron
 (abertura_tiflux_para_glpi.abrir_ticket_no_glpi), com as mesmas proteções.
 
-Uso: python -m sync.abrir_ticket_tiflux_no_glpi --numero-tiflux 364990 [--aplicar]
+--ignorar-corte trata o ticket como aberto depois de ABERTURA_TIFLUX_DESDE
+(spec 010: importar tickets anteriores ao corte); as demais regras valem.
+
+Uso: python -m sync.abrir_ticket_tiflux_no_glpi --numero-tiflux 364990 [--ignorar-corte] [--aplicar]
 """
 
 import argparse
+import dataclasses
 import json
+from datetime import datetime, timezone
 
 from sync import db_abertura_tiflux, db_chamados
 from sync.abertura_tiflux_para_glpi import abrir_ticket_no_glpi, numeros_ja_vinculados
@@ -24,7 +29,7 @@ from sync.tipos import ConexaoDb
 
 def main() -> None:
     argumentos = _ler_argumentos()
-    config = Config.carregar()
+    config = config_do_comando(Config.carregar(), argumentos.ignorar_corte)
     if config.abertura_tiflux_desde is None:
         print("ABERTURA_TIFLUX_DESDE vazio no .env: a abertura Tiflux -> GLPI está desligada.")
         return
@@ -44,6 +49,17 @@ def _executar(conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxC
         print(f"Chamado GLPI: #{id_glpi}" if id_glpi else "Nada aberto — veja o log acima.")
         return
     print(simular_abertura(config, glpi.cliente_abertura(), tiflux, argumentos.numero_tiflux, vinculados))
+
+
+def config_do_comando(config: Config, ignorar_corte: bool) -> Config:
+    """
+    Com ignorar_corte, o corte vai para o início dos tempos — só se a abertura
+    estiver ligada (corte vazio continua desligando).
+    Ex.: config_do_comando(config, True).abertura_tiflux_desde -> datetime(1, 1, 1, tzinfo=timezone.utc)
+    """
+    if not ignorar_corte or config.abertura_tiflux_desde is None:
+        return config
+    return dataclasses.replace(config, abertura_tiflux_desde=datetime.min.replace(tzinfo=timezone.utc))
 
 
 def simular_abertura(
@@ -70,6 +86,7 @@ def _ler_argumentos() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Abre no GLPI um ticket do Tiflux (spec 009).")
     parser.add_argument("--numero-tiflux", type=int, required=True)
     parser.add_argument("--aplicar", action="store_true", help="sem isto, só mostra o que seria enviado")
+    parser.add_argument("--ignorar-corte", action="store_true", help="aceita ticket aberto antes de ABERTURA_TIFLUX_DESDE")
     return parser.parse_args()
 
 

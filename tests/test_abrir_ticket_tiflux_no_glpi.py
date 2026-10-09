@@ -1,7 +1,9 @@
 import unittest
 from datetime import datetime, timezone
 
-from sync.abrir_ticket_tiflux_no_glpi import simular_abertura
+import dataclasses
+
+from sync.abrir_ticket_tiflux_no_glpi import config_do_comando, simular_abertura
 from sync.config import Config
 from tests.fake_clients import FakeGlpiAberturaClient, FakeTifluxClient
 
@@ -38,6 +40,25 @@ class TestSimularAbertura(unittest.TestCase):
     def test_ticket_ilegivel(self):
         self.tiflux.tickets_por_numero[1] = _TICKET
         self.assertIn("não lido (status 404)", simular_abertura(_CONFIG, self.glpi_abertura, self.tiflux, 364990, set()))
+
+
+class TestIgnorarCorte(unittest.TestCase):
+    def setUp(self):
+        self.tiflux = FakeTifluxClient()
+        self.tiflux.tickets_por_numero[364990] = {**_TICKET, "created_at": "2026-10-06T16:22:14Z"}
+
+    def test_sem_a_flag_ticket_anterior_ao_corte_nao_e_candidato(self):
+        # Spec 010, AC 4.
+        config = config_do_comando(_CONFIG, False)
+        self.assertIn("NÃO", simular_abertura(config, FakeGlpiAberturaClient(), self.tiflux, 364990, set()))
+
+    def test_com_a_flag_vira_candidato(self):
+        config = config_do_comando(_CONFIG, True)
+        self.assertIn("Candidato: sim", simular_abertura(config, FakeGlpiAberturaClient(), self.tiflux, 364990, set()))
+
+    def test_flag_nao_liga_abertura_desligada(self):
+        desligada = dataclasses.replace(_CONFIG, abertura_tiflux_desde=None)
+        self.assertIsNone(config_do_comando(desligada, True).abertura_tiflux_desde)
 
 
 if __name__ == "__main__":
