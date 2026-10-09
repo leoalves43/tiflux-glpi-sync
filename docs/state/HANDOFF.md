@@ -1,10 +1,8 @@
 # Handoff
 
-DONE (2026-10-09), branch `feat/009-abertura-tiflux-para-glpi`, 442 tests green (3.14 + 3.13 image `tiflux-glpi-sync:teste-009`):
-- Spec 009 + plan 009 approved; plan tasks 1-8 + 10 [x] (Pendente everywhere, title guard, rules, intent
-  rows, GLPI writes, Tiflux rename/files, orchestration + CLI, Novo->Pendente backfill).
-- Dry runs only (no writes): CLI on Tiflux #364844 (payload ok) / #364925 (correctly not candidate);
-  backfill lists 3 Novo tickets: 34982, 34986, 34990.
+DONE (2026-10-09), branch `feat/009-abertura-tiflux-para-glpi`, 443 tests green (3.14 + 3.13):
+- Spec/plan 009 approved; plan tasks 1-8 + 10 [x]. Only dry runs so far (no writes): CLI on
+  Tiflux #364844 ok / #364925 not candidate; backfill would change GLPI 34982, 34986, 34990.
 
 NEXT (plan task 9, every write needs user OK):
 1. User picks the go-live cutoff (ABERTURA_TIFLUX_DESDE) and opens a test ticket in Tiflux.
