@@ -57,7 +57,7 @@ def simular_abertura(
     ticket, status_http = tiflux.obter_ticket(numero_tiflux)
     if ticket is None:
         return f"Ticket Tiflux #{numero_tiflux} não lido (status {status_http})."
-    candidato = ticket_candidato_a_abertura(ticket, config.abertura_tiflux_desde, vinculados)
+    candidato = ticket_candidato_a_abertura(ticket, config.abertura_tiflux_desde, config.cliente_tiflux_id, vinculados)
     requestor = ticket.get("requestor") or {}
     id_requerente = glpi_abertura.buscar_usuario_por_email(requestor.get("email")) or definir_autor_glpi(config)
     campos = campos_chamado_glpi(ticket, id_requerente, definir_autor_glpi(config))

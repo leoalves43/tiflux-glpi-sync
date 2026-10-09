@@ -13,7 +13,7 @@ _CONFIG = Config(
     abertura_tiflux_desde=datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc),
 )
 _TICKET = {
-    "ticket_number": 364990, "desk": {"id": 37965}, "created_at": "2026-10-10T13:00:00Z", "title": "Empenho",
+    "ticket_number": 364990, "client": {"id": 762707}, "desk": {"id": 37965}, "created_at": "2026-10-10T13:00:00Z", "title": "Empenho",
     "requestor": {"email": "a@x.gov.br", "telephone": ""}, "description": "<p>x</p>",
 }
 

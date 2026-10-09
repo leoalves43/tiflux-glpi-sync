@@ -78,7 +78,7 @@ def _abrir(
         db_abertura_tiflux.registrar_abertura_erro(conn, config, numero_tiflux, erro)
         log(f"⚠️ Ticket Tiflux #{numero_tiflux}: {erro} — tenta na próxima execução")
         return None
-    if not ticket_candidato_a_abertura(ticket, config.abertura_tiflux_desde, vinculados):
+    if not ticket_candidato_a_abertura(ticket, config.abertura_tiflux_desde, config.cliente_tiflux_id, vinculados):
         db_abertura_tiflux.registrar_abertura_ignorada(conn, config, numero_tiflux)
         log(f"ℹ️ Ticket Tiflux #{numero_tiflux}: não é mais candidato à abertura no GLPI — ignorado")
         return None
@@ -153,7 +153,7 @@ def _numeros_para_abrir(
     """Novos do panorama + aberturas com erro (fora da listagem se o ticket já fechou)."""
     novos = {
         int(t["ticket_number"]) for t in panorama.tickets_listados
-        if ticket_candidato_a_abertura(t, config.abertura_tiflux_desde, vinculados)
+        if ticket_candidato_a_abertura(t, config.abertura_tiflux_desde, config.cliente_tiflux_id, vinculados)
     }
     retentativas = {n for n, s in estados.items() if s == db_abertura_tiflux.STATUS_ABERTURA_ERRO} - vinculados
     return sorted(novos | retentativas)

@@ -12,46 +12,53 @@ from sync.regras_abertura_glpi import (
 )
 
 _CORTE = datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
+_CLIENTE = 762707  # SP-CARAGUATATUBA-PM
 _TICKET_NOVO = {
-    "ticket_number": 364990, "desk": {"id": 37964}, "created_at": "2026-10-10T13:00:00Z", "title": "Erro no boleto",
+    "ticket_number": 364990, "client": {"id": _CLIENTE}, "desk": {"id": 37964}, "created_at": "2026-10-10T13:00:00Z", "title": "Erro no boleto",
 }
 
 
 class TestTicketCandidatoAAbertura(unittest.TestCase):
     def test_ticket_novo_numa_mesa_do_contrato_e_candidato(self):
-        self.assertTrue(ticket_candidato_a_abertura(_TICKET_NOVO, _CORTE, set()))
+        self.assertTrue(ticket_candidato_a_abertura(_TICKET_NOVO, _CORTE, _CLIENTE, set()))
 
     def test_infraestrutura_vai_para_a_categoria_348(self):
         # Spec 010, AC 1.
         ticket = {**_TICKET_NOVO, "desk": {"id": 38853}, "description": "", "requestor": {}}
-        self.assertTrue(ticket_candidato_a_abertura(ticket, _CORTE, set()))
+        self.assertTrue(ticket_candidato_a_abertura(ticket, _CORTE, _CLIENTE, set()))
         self.assertEqual(campos_chamado_glpi(ticket, 4988, 4988)["itilcategories_id"], 348)
+
+    def test_outro_cliente_nao_e_candidato(self):
+        # Spec 010, AC 3.
+        ticket = {**_TICKET_NOVO, "client": {"id": 999}}
+        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, _CLIENTE, set()))
+        self.assertFalse(ticket_candidato_a_abertura({**_TICKET_NOVO, "client": None}, _CORTE, _CLIENTE, set()))
 
     def test_mesa_fora_do_contrato_nao_e_candidata(self):
         # AC 4: ex. DEVOPS (INFRAESTRUTURA entrou na spec 010).
         ticket = {**_TICKET_NOVO, "desk": {"id": 11111}}
-        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, set()))
+        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, _CLIENTE, set()))
 
     def test_aberto_antes_do_corte_nao_e_candidato(self):
         # AC 6.
         ticket = {**_TICKET_NOVO, "created_at": "2026-10-10T11:59:59Z"}
-        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, set()))
+        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, _CLIENTE, set()))
 
     def test_ja_vinculado_na_auditoria_nao_e_candidato(self):
         # AC 5: ticket criado pela integração a partir do GLPI.
-        self.assertFalse(ticket_candidato_a_abertura(_TICKET_NOVO, _CORTE, {364990}))
+        self.assertFalse(ticket_candidato_a_abertura(_TICKET_NOVO, _CORTE, _CLIENTE, {364990}))
 
     def test_numero_em_texto_tambem_e_comparado_como_inteiro(self):
         ticket = {**_TICKET_NOVO, "ticket_number": "364990"}
-        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, {364990}))
+        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, _CLIENTE, {364990}))
 
     def test_sem_data_de_criacao_nao_e_candidato(self):
         ticket = {**_TICKET_NOVO, "created_at": None}
-        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, set()))
+        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, _CLIENTE, set()))
 
     def test_titulo_com_id_glpi_nao_e_candidato(self):
         ticket = {**_TICKET_NOVO, "title": "Erro no boleto (34986) "}
-        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, set()))
+        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, _CLIENTE, set()))
 
 
 class TestTelefoneParaGlpi(unittest.TestCase):

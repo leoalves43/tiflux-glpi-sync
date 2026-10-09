@@ -21,7 +21,7 @@ _CONFIG = Config(
     abertura_tiflux_desde=datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc),
 )
 _LISTADO = {
-    "ticket_number": 364990, "desk": {"id": 37964}, "created_at": "2026-10-10T13:00:00Z", "title": "Erro no boleto",
+    "ticket_number": 364990, "client": {"id": 762707}, "desk": {"id": 37964}, "created_at": "2026-10-10T13:00:00Z", "title": "Erro no boleto",
     "requestor": {"name": "Paula", "email": "paula@x.gov.br", "telephone": "+551238971108"},
 }
 _COMPLETO = {**_LISTADO, "description": "<p>Boleto não gera</p>"}

@@ -34,15 +34,18 @@ _REGEX_TITULO_COM_ID_GLPI = re.compile(r"\(\d+\)\s*$")
 
 
 def ticket_candidato_a_abertura(
-    ticket_tiflux: dict, abertura_desde: datetime, numeros_ja_vinculados: Collection[int],
+    ticket_tiflux: dict, abertura_desde: datetime, id_cliente: int, numeros_ja_vinculados: Collection[int],
 ) -> bool:
     """
-    True se o ticket listado no Tiflux deve virar chamado no GLPI: mesa do
-    contrato, aberto a partir do corte, sem par conhecido (auditoria ou
-    "(<id_glpi>)" no título — tickets criados pela integração têm os dois).
-    Ex.: ticket_candidato_a_abertura({"ticket_number": 364990, "desk": {"id": 37964},
-         "created_at": "2026-10-10T13:00:00Z", "title": "Erro"}, corte, set()) -> True
+    True se o ticket listado no Tiflux deve virar chamado no GLPI: do cliente
+    da prefeitura (spec 010), mesa do contrato, aberto a partir do corte, sem
+    par conhecido (auditoria ou "(<id_glpi>)" no título — tickets criados pela
+    integração têm os dois).
+    Ex.: ticket_candidato_a_abertura({"ticket_number": 364990, "client": {"id": 762707}, "desk": {"id": 37964},
+         "created_at": "2026-10-10T13:00:00Z", "title": "Erro"}, corte, 762707, set()) -> True
     """
+    if (ticket_tiflux.get("client") or {}).get("id") != id_cliente:
+        return False
     if (ticket_tiflux.get("desk") or {}).get("id") not in CATEGORIA_GLPI_POR_MESA:
         return False
     if int(ticket_tiflux["ticket_number"]) in numeros_ja_vinculados:
