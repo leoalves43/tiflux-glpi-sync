@@ -71,7 +71,7 @@ chamadas novas vão para módulos novos.
 - [x] 3. Regras puras: de-para mesa -> categoria, constantes fixas, telefone
   E.164 -> dígitos (padrão `1238971100`), filtro de candidato, títulos.
   Files: regras_abertura_glpi, config, .env.example, testes. Done: testes.
-- [ ] 4. Auditoria da intenção (`abertura_tiflux`) e exclusão dessa direção
+- [x] 4. Auditoria da intenção (`abertura_tiflux`) e exclusão dessa direção
   nas consultas existentes. Files: db_abertura_tiflux, db_followups (se
   preciso), audit_tables.toon, testes. Done: testes; queries de rodízio não
   veem a direção nova.
