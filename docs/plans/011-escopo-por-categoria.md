@@ -17,4 +17,5 @@ da sondagem #34991–#35021, 22 não sincronizados, nenhum com categoria do de-p
 ## Tarefas
 - [x] 1. Escopo pela categoria em processar_chamado. Done: testes AC 1-2.
 - [x] 2. Grupo 22 observador junto do técnico. Done: testes AC 3-4.
-- [ ] 3. Deploy e conferência no primeiro chamado real. Docs.
+- [x] 3. Deploy (16:48, 1º ciclo: 22 ignorados, 0 criados) e docs. Conferir o
+  grupo 22 no primeiro chamado real criado depois disso.
