@@ -1,16 +1,15 @@
 # Handoff
 
 DONE (2026-10-09), branch `feat/009-abertura-tiflux-para-glpi`, 443 tests green (3.14 + 3.13):
-- Spec/plan 009 approved; plan tasks 1-8 + 10 [x]. Only dry runs so far (no writes): CLI on
-  Tiflux #364844 ok / #364925 not candidate; backfill would change GLPI 34982, 34986, 34990.
+- Spec/plan 009 tasks 1-8 + 10 [x]. Live (container stopped, cutoff 2026-10-09T17:25:00Z in .env):
+  Tiflux #364984 -> GLPI #35009 (entity 1, loc 1685, cat 272, Pendente, png copied); answer both
+  ways; Tiflux close -> Solucionado; API reopen -> Pendente. GLPI #35000/#35002 -> Tiflux, Pendente.
+- GLPI #35007 = first test, Solucionado and unlinked (audit numero_tiflux NULL) by hand.
 
-NEXT (plan task 9, every write needs user OK):
-1. User picks the go-live cutoff (ABERTURA_TIFLUX_DESDE) and opens a test ticket in Tiflux.
-2. Stop prod container -> CLI `--aplicar` on the test ticket only -> GET Ticket, Ticket_User,
-   Group_Ticket, phone row, Document_Item: entity 1, location 1685, status 4, 1 requester, HTML ok.
-3. Full cycle from the branch (writes prod: real tickets get Pendente, post-cutoff tickets imported);
-   GLPI-side test followup from an account != 4988 (anti-echo skips 4988); close; reopen.
-4. Merge + rebuild container; THEN `python -m sync.pendente_retroativo --aplicar` (main flips back to Novo).
+NEXT:
+1. Container is STOPPED: merge to main + `docker compose up -d --build` (ABERTURA_TIFLUX_DESDE is in .env).
+2. Then `python -m sync.pendente_retroativo --aplicar` (dry run: 34982, 34986, 34990).
+3. Untested live: ticket opened+closed between runs (AC 9). Files > ~2 MB fail on GLPI's PHP upload limit.
 
 RISKS:
 - Prod container runs `main`: no Pendente, no title guard. Don't run branch code alongside it.

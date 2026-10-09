@@ -92,5 +92,6 @@ chamadas novas vão para módulos novos.
   sub-itens no GLPI; depois ciclo completo (escreve em produção). Followup
   GLPI -> Tiflux de teste com conta != 4988 (anti-eco ignora 4988).
   Backfill só DEPOIS do deploy: `main` volta chamados para Novo.
-  Done: AC 1-14 conferidos.
+  Done: AC 1-14 conferidos. Feito 2026-10-09: AC 1-3, 5, 7, 10-12 ao vivo;
+  AC 9 e 13 pendentes (13 só após o deploy).
 - [x] 10. Docs: ARCHITECTURE, README, LOG, HANDOFF.
