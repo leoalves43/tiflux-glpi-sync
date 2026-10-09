@@ -12,6 +12,7 @@ CATEGORIA_GLPI_POR_MESA: dict[int, int] = {
     37964: 272,  # ARRECADAÇÃO
     37965: 277,  # FINANÇAS
     37966: 282,  # SUPRIMENTOS
+    38853: 348,  # INFRAESTRUTURA (spec 010)
 }
 
 # Campos fixos do chamado no GLPI, definidos pelo usuário na spec 009.

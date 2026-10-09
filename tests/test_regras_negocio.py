@@ -39,6 +39,11 @@ class TestDeparaCategoria(unittest.TestCase):
         self.assertEqual(depara_categoria(282), 37966)
         self.assertEqual(depara_categoria(286), 37966)
 
+    def test_categoria_348_e_infraestrutura(self):
+        # Spec 010.
+        self.assertEqual(depara_categoria(348), 38853)
+        self.assertEqual(definir_prioridade(38853), 123346)
+
     def test_fora_de_qualquer_faixa_retorna_none(self):
         self.assertIsNone(depara_categoria(266))
         self.assertIsNone(depara_categoria(287))

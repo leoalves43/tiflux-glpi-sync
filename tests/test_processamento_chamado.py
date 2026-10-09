@@ -127,6 +127,14 @@ class TestProcessarChamado(unittest.TestCase):
         processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
         self.assertEqual(self.glpi.tecnicos_atribuidos_glpi, [(1, _CONFIG.id_glpi_leo)])
 
+    def test_categoria_348_cria_na_infraestrutura_sem_tecnico(self):
+        # Spec 010, AC 2.
+        self.glpi.tickets[1] = {**_TICKET_ARRECADACAO, "itilcategories_id": 348}
+        status, numero, msg = processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
+        form = self.tiflux.tickets_criados[0]
+        self.assertEqual((status, form["desk_id"], form["priority_id"]), ("sucesso", "38853", "123346"))
+        self.assertEqual(self.tiflux.tecnicos_atribuidos, [])
+
     def test_sucesso_atribui_tecnico_leo_no_glpi_para_outras_mesas(self):
         self.glpi.tickets[1] = _TICKET_FINANCAS
         processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)

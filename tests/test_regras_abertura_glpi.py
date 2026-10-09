@@ -21,8 +21,14 @@ class TestTicketCandidatoAAbertura(unittest.TestCase):
     def test_ticket_novo_numa_mesa_do_contrato_e_candidato(self):
         self.assertTrue(ticket_candidato_a_abertura(_TICKET_NOVO, _CORTE, set()))
 
+    def test_infraestrutura_vai_para_a_categoria_348(self):
+        # Spec 010, AC 1.
+        ticket = {**_TICKET_NOVO, "desk": {"id": 38853}, "description": "", "requestor": {}}
+        self.assertTrue(ticket_candidato_a_abertura(ticket, _CORTE, set()))
+        self.assertEqual(campos_chamado_glpi(ticket, 4988, 4988)["itilcategories_id"], 348)
+
     def test_mesa_fora_do_contrato_nao_e_candidata(self):
-        # AC 4: ex. INFRAESTRUTURA.
+        # AC 4: ex. DEVOPS (INFRAESTRUTURA entrou na spec 010).
         ticket = {**_TICKET_NOVO, "desk": {"id": 11111}}
         self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, set()))
 

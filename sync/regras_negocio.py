@@ -11,6 +11,7 @@ PRIORIDADE_POR_MESA = {
     37964: 120549,  # ARRECADAÇÃO        -> Solicitar um Atendimento
     37965: 120551,  # FINANÇAS           -> Solicitar um Atendimento
     37966: 121197,  # SUPRIMENTOS        -> Solicitar um Atendimento
+    38853: 123346,  # INFRAESTRUTURA     -> Solicitar um Atendimento (spec 010)
 }
 
 # Textos de SLA do contrato, agrupados em 3 faixas sobre a escala de 6 níveis do GLPI.
@@ -60,6 +61,8 @@ def depara_categoria(cat_id: int | None) -> int | None:
         return 37965  # FINANÇAS
     if cat_id in range(282, 287):
         return 37966  # SUPRIMENTOS
+    if cat_id == 348:
+        return 38853  # INFRAESTRUTURA (spec 010)
     return None
 
 
