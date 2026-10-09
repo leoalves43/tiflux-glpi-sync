@@ -5,6 +5,7 @@ from collections import Counter
 from datetime import datetime, timezone
 
 from sync import db_chamados
+from sync.abertura_tiflux_para_glpi import abrir_chamados_do_tiflux
 from sync.config import Config, log
 from sync.glpi_client import GlpiClient
 from sync.panorama_tiflux import concluir_panorama_tiflux, ler_panorama_tiflux
@@ -52,6 +53,9 @@ def _sincronizar_followups_com_panorama(
     panorama = ler_panorama_tiflux(conn, config, tiflux, datetime.now(timezone.utc))
     if panorama is None:
         return
+    # Antes dos followups: o chamado recém-aberto já entra no rodízio desta
+    # execução (ticket fechado entre duas execuções vai a Solucionado já).
+    abrir_chamados_do_tiflux(conn, config, glpi, tiflux, panorama)
     sincronizar_followups(conn, config, glpi, tiflux, panorama)
     concluir_panorama_tiflux(conn, config, panorama)
 

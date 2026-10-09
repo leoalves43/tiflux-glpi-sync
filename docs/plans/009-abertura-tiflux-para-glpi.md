@@ -44,7 +44,8 @@ Spec: `docs/specs/009-abertura-tiflux-para-glpi.md`.
 ## Arquivos
 Novos: `sync/regras_abertura_glpi.py`, `sync/glpi_abertura_client.py`,
 `sync/db_abertura_tiflux.py`, `sync/abertura_tiflux_para_glpi.py`,
-`sync/anexos_tiflux_para_glpi.py`, `sync/pendente_retroativo.py`, testes
+`sync/anexos_tiflux_para_glpi.py`, `sync/abrir_ticket_tiflux_no_glpi.py`
+(CLI manual), `sync/pendente_retroativo.py`, testes
 correspondentes. Alterados: `sync/config.py`, `sync/panorama_tiflux.py`,
 `sync/main.py`, `sync/processamento_chamado.py`, `sync/glpi_client.py`
 (renomear `voltar_status_para_novo`; acessor da sessão, se preciso),
@@ -80,8 +81,8 @@ chamadas novas vão para módulos novos.
   testes com fake.
 - [x] 6. Tiflux: renomear ticket, listar/baixar arquivos; anexos -> GLPI
   Document. Files: tiflux_client, anexos_tiflux_para_glpi, testes. Done: testes.
-- [ ] 7. Orquestração + panorama + main + entrypoint manual
-  `python -m sync.abertura_tiflux_para_glpi --numero-tiflux N [--aplicar]`
+- [x] 7. Orquestração + panorama + main + entrypoint manual
+  `python -m sync.abrir_ticket_tiflux_no_glpi --numero-tiflux N [--aplicar]`
   (sem `--aplicar` só imprime o payload). Files: abertura_tiflux_para_glpi,
   panorama_tiflux, main, testes. Done: testes de AC 1-6, 8-11, 14.
 - [ ] 8. Backfill `python -m sync.pendente_retroativo [--aplicar]`. Done:

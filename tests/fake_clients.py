@@ -10,11 +10,12 @@ from sync.panorama_tiflux import PanoramaTiflux
 
 def panorama_de_teste(
     abertos: tuple = (), atualizados: tuple = (), mudancas: tuple = (), varredura_completa: tuple = (),
+    tickets_listados: tuple = (),
 ) -> PanoramaTiflux:
     """Panorama do Tiflux montado à mão (spec 008); o padrão não tem nenhum ticket aberto nem atualizado."""
     return PanoramaTiflux(
         datetime(2026, 10, 7, 19, 30, tzinfo=timezone.utc),
-        frozenset(abertos), frozenset(atualizados), tuple(mudancas), tuple(varredura_completa),
+        frozenset(abertos), frozenset(atualizados), tuple(mudancas), tuple(varredura_completa), tuple(tickets_listados),
     )
 
 
@@ -102,6 +103,12 @@ class FakeGlpiClient:
 
     def solucao_registrada(self, id_chamado):
         return self.ja_tem_solucao.get(id_chamado, False)
+
+    def cliente_abertura(self):
+        # Atribuído sob demanda: FakeGlpiAberturaClient é definido mais abaixo.
+        if not hasattr(self, "abertura"):
+            self.abertura = FakeGlpiAberturaClient()
+        return self.abertura
 
     def definir_status_pendente(self, id_chamado):
         self.chamados_deixados_pendentes.append(id_chamado)

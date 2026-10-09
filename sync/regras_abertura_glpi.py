@@ -48,7 +48,8 @@ def ticket_candidato_a_abertura(
         return False
     if _REGEX_TITULO_COM_ID_GLPI.search(ticket_tiflux.get("title") or ""):
         return False
-    return datetime.fromisoformat(ticket_tiflux["created_at"]) >= abertura_desde
+    criado_em = ticket_tiflux.get("created_at")
+    return bool(criado_em) and datetime.fromisoformat(criado_em) >= abertura_desde
 
 
 def telefone_para_glpi(telefone_tiflux: str | None) -> str:

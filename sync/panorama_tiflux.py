@@ -23,6 +23,8 @@ class PanoramaTiflux:
     `abertos`/`atualizados`: números de ticket no Tiflux. `mudancas`: pares
     (id_glpi, numero_tiflux) com status divergente da última cascata.
     `varredura_completa`: pares da rede de segurança desta execução.
+    `tickets_listados`: os dicts das 2 listagens, um por número — a abertura
+    Tiflux -> GLPI (spec 009) acha os tickets novos neles sem requisição extra.
     Ex.: PanoramaTiflux(agora, frozenset({364678}), frozenset(), (), ((34759, 364160),))
     """
 
@@ -31,6 +33,7 @@ class PanoramaTiflux:
     atualizados: frozenset[NumeroTiflux]
     mudancas: tuple[tuple[int, NumeroTiflux], ...]
     varredura_completa: tuple[tuple[int, NumeroTiflux], ...]
+    tickets_listados: tuple[dict, ...] = ()
 
 
 def ler_panorama_tiflux(
@@ -58,6 +61,7 @@ def ler_panorama_tiflux(
         varredura_completa=tuple(
             db_followups.obter_chamados_para_varredura_completa(conn, config, config.varredura_completa_por_execucao),
         ),
+        tickets_listados=_um_por_numero(atualizados + abertos),
     )
 
 
@@ -77,6 +81,14 @@ def _inicio_da_janela(conn: ConexaoDb, config: Config, agora_utc: datetime) -> d
     if checkpoint is None:
         return agora_utc - timedelta(minutes=config.janela_mudancas_status_tiflux_minutos)
     return checkpoint - timedelta(minutes=config.margem_checkpoint_tiflux_minutos)
+
+
+def _um_por_numero(tickets: list[dict]) -> tuple[dict, ...]:
+    """Ticket nas duas listagens aparece uma vez (a primeira ocorrência)."""
+    por_numero: dict[NumeroTiflux, dict] = {}
+    for ticket in tickets:
+        por_numero.setdefault(ticket.get("ticket_number"), ticket)
+    return tuple(t for n, t in por_numero.items() if n is not None)
 
 
 def _numeros(tickets: list[dict]) -> frozenset[NumeroTiflux]:

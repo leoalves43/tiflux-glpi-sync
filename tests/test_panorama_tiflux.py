@@ -54,6 +54,14 @@ class TestLerPanorama(unittest.TestCase):
         self.assertEqual(panorama.varredura_completa, ((4, 40),))
         self.assertEqual(panorama.inicio_execucao_utc, _AGORA)
 
+    def test_tickets_listados_um_por_numero_para_a_abertura(self):
+        # Spec 009: aberto e atualizado ao mesmo tempo aparece uma vez só.
+        tiflux = FakeTifluxClient()
+        tiflux.tickets_abertos = [{"ticket_number": 7, "title": "aberto"}]
+        tiflux.tickets_atualizados = [{"ticket_number": 7, "title": "atualizado"}, {"ticket_number": 9}]
+        panorama = ler_panorama_tiflux(_conn(), _CONFIG, tiflux, _AGORA)
+        self.assertEqual(panorama.tickets_listados, ({"ticket_number": 7, "title": "atualizado"}, {"ticket_number": 9}))
+
     def test_falha_nos_atualizados_devolve_none(self):
         tiflux = FakeTifluxClient()
         tiflux.falha_listagem_atualizados = ListagemTifluxIncompleta("status 429", [])

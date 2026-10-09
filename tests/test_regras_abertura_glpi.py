@@ -39,6 +39,10 @@ class TestTicketCandidatoAAbertura(unittest.TestCase):
         ticket = {**_TICKET_NOVO, "ticket_number": "364990"}
         self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, {364990}))
 
+    def test_sem_data_de_criacao_nao_e_candidato(self):
+        ticket = {**_TICKET_NOVO, "created_at": None}
+        self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, set()))
+
     def test_titulo_com_id_glpi_nao_e_candidato(self):
         ticket = {**_TICKET_NOVO, "title": "Erro no boleto (34986) "}
         self.assertFalse(ticket_candidato_a_abertura(ticket, _CORTE, set()))
