@@ -1,17 +1,18 @@
 # Handoff
 
 DONE (2026-10-09), branch `feat/009-abertura-tiflux-para-glpi`, 442 tests green (3.14 + 3.13 image `tiflux-glpi-sync:teste-009`):
-- Spec 009 + plan 009 approved; plan tasks 1-8 [x] (Pendente everywhere, title guard, rules, intent
+- Spec 009 + plan 009 approved; plan tasks 1-8 + 10 [x] (Pendente everywhere, title guard, rules, intent
   rows, GLPI writes, Tiflux rename/files, orchestration + CLI, Novo->Pendente backfill).
 - Dry runs only (no writes): CLI on Tiflux #364844 (payload ok) / #364925 (correctly not candidate);
   backfill lists 3 Novo tickets: 34982, 34986, 34990.
 
-NEXT:
-1. Plan task 9, live, each step with user OK: stop prod container, set ABERTURA_TIFLUX_DESDE, test ticket
-   in Tiflux -> one cycle `python glpi_tiflux.py` from the branch -> check GLPI fields (entity 1 + location
-   1685 actually saved, status 4, requester, observer 22, phone, attachment), Tiflux title "(id)".
-2. Answers both ways, close, reopen; then `python -m sync.pendente_retroativo --aplicar`.
-3. Task 10 docs (ARCHITECTURE, README, LOG); merge to main + rebuild container (user decides).
+NEXT (plan task 9, every write needs user OK):
+1. User picks the go-live cutoff (ABERTURA_TIFLUX_DESDE) and opens a test ticket in Tiflux.
+2. Stop prod container -> CLI `--aplicar` on the test ticket only -> GET Ticket, Ticket_User,
+   Group_Ticket, phone row, Document_Item: entity 1, location 1685, status 4, 1 requester, HTML ok.
+3. Full cycle from the branch (writes prod: real tickets get Pendente, post-cutoff tickets imported);
+   GLPI-side test followup from an account != 4988 (anti-echo skips 4988); close; reopen.
+4. Merge + rebuild container; THEN `python -m sync.pendente_retroativo --aplicar` (main flips back to Novo).
 
 RISKS:
 - Prod container runs `main`: no Pendente, no title guard. Don't run branch code alongside it.
