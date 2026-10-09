@@ -122,9 +122,13 @@ class TestTicketsQueNaoAbrem(_Base):
         self._nada_criado(_conn(na_auditoria=[(364990,)]), _LISTADO, {**_LISTADO, "desk": {"id": 1}})
         self.assertEqual(self.tiflux.requisicoes, [])
 
-    def test_ticket_ilegivel_no_tiflux_nao_grava_nada(self):
+    def test_ticket_ilegivel_no_tiflux_vira_erro_retentavel(self):
+        # Fechado entre execuções + 5xx: sem a linha 'erro', a retentativa se perderia.
         self.tiflux.tickets_por_numero = {1: {}}
-        self._nada_criado(_conn(), _LISTADO)
+        conn = _conn()
+        self._abrir(conn, _LISTADO)
+        self.assertEqual(self.abertura.chamados_criados, [])
+        self.assertEqual(_escritas(conn), [("followups", "erro")])
 
 
 class TestFalhaAoCriarNoGlpi(_Base):
@@ -149,8 +153,10 @@ class TestFalhaAoCriarNoGlpi(_Base):
     def test_ticket_que_deixou_de_ser_candidato_nao_e_aberto(self):
         # Ex.: renomeado à mão com "(id_glpi)" entre a listagem e a leitura individual.
         self.tiflux.tickets_por_numero[364990] = {**_COMPLETO, "title": "Erro (34999)"}
-        self.assertIn("não é mais candidato", self._abrir(_conn(), _LISTADO))
+        conn = _conn(estados=[(364990, "erro")])
+        self.assertIn("não é mais candidato", self._abrir(conn, _LISTADO))
         self.assertEqual(self.abertura.chamados_criados, [])
+        self.assertEqual(_escritas(conn), [("followups", "ignorado")])
 
     def test_excecao_num_ticket_nao_para_os_demais(self):
         outro = {**_LISTADO, "ticket_number": 364991}

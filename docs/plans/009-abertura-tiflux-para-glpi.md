@@ -88,6 +88,9 @@ chamadas novas vão para módulos novos.
 - [x] 8. Backfill `python -m sync.pendente_retroativo [--aplicar]`. Done:
   dry run lista chamados; teste.
 - [ ] 9. Verificação ao vivo (com OK do usuário): dry run num ticket real;
-  ticket de teste no Tiflux -> GLPI; resposta nos 2 sentidos; encerrar;
-  reabrir; backfill. Done: AC 1-14 conferidos.
+  container parado; 1ª escrita isolada via CLI `--aplicar` + GET dos
+  sub-itens no GLPI; depois ciclo completo (escreve em produção). Followup
+  GLPI -> Tiflux de teste com conta != 4988 (anti-eco ignora 4988).
+  Backfill só DEPOIS do deploy: `main` volta chamados para Novo.
+  Done: AC 1-14 conferidos.
 - [ ] 10. Docs: ARCHITECTURE, README, LOG, HANDOFF.

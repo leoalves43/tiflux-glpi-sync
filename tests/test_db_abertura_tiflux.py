@@ -49,6 +49,11 @@ class TestRegistrarAbertura(unittest.TestCase):
         db_abertura_tiflux.registrar_abertura_erro(conn, _CONFIG, 364990, "GLPI recusou (400)")
         self.assertEqual(_linha_gravada(conn)[5:], (None, "erro", "GLPI recusou (400)"))
 
+    def test_ignorada_e_terminal(self):
+        conn = FakeConnection()
+        db_abertura_tiflux.registrar_abertura_ignorada(conn, _CONFIG, 364990)
+        self.assertEqual(_linha_gravada(conn)[4:7], (364990, None, "ignorado"))
+
 
 if __name__ == "__main__":
     unittest.main()

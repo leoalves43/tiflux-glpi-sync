@@ -72,9 +72,14 @@ def _abrir(
     # candidatos e não traz a descrição.
     ticket, status_http = tiflux.obter_ticket(numero_tiflux)
     if ticket is None:
-        log(f"⚠️ Ticket Tiflux #{numero_tiflux}: não foi possível ler (status {status_http}) — tenta na próxima execução")
+        # Grava 'erro': um ticket fechado sai das listagens e o checkpoint já
+        # passou dele — sem a linha, a retentativa nunca aconteceria.
+        erro = f"Ticket ilegível no Tiflux (status {status_http}, esperado 200)"
+        db_abertura_tiflux.registrar_abertura_erro(conn, config, numero_tiflux, erro)
+        log(f"⚠️ Ticket Tiflux #{numero_tiflux}: {erro} — tenta na próxima execução")
         return None
     if not ticket_candidato_a_abertura(ticket, config.abertura_tiflux_desde, vinculados):
+        db_abertura_tiflux.registrar_abertura_ignorada(conn, config, numero_tiflux)
         log(f"ℹ️ Ticket Tiflux #{numero_tiflux}: não é mais candidato à abertura no GLPI — ignorado")
         return None
     id_glpi = _criar_no_glpi(conn, config, glpi_abertura, ticket, numero_tiflux)
