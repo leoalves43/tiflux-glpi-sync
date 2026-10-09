@@ -29,7 +29,16 @@ class TestBuscarUsuarioPorEmail(unittest.TestCase):
         fake.programar("GET", "/UserEmail", FakeResponse(200, [
             {"users_id": 173, "email": "Paula.Avila@x.gov.br"}, {"users_id": 9, "email": "paula.avila@x.gov.br.old"},
         ]))
+        fake.programar("GET", "/User/173", FakeResponse(200, {"is_active": 1, "is_deleted": 0}))
         self.assertEqual(_client(fake).buscar_usuario_por_email("paula.avila@x.gov.br"), 173)
+
+    def test_usuario_inativo_ou_na_lixeira_devolve_none(self):
+        # Spec 010: requerente inativo vira o padrão (Suporte Embras).
+        for usuario in ({"is_active": 0, "is_deleted": 0}, {"is_active": 1, "is_deleted": 1}):
+            fake = FakeRequests()
+            fake.programar("GET", "/UserEmail", FakeResponse(200, [{"users_id": 173, "email": "a@x.com"}]))
+            fake.programar("GET", "/User/173", FakeResponse(200, usuario))
+            self.assertIsNone(_client(fake).buscar_usuario_por_email("a@x.com"))
 
     def test_sem_correspondencia_ou_sem_email_devolve_none(self):
         fake = FakeRequests()

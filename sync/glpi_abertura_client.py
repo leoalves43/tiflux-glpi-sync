@@ -39,8 +39,9 @@ class GlpiAberturaClient:
 
     def buscar_usuario_por_email(self, email: str | None) -> int | None:
         """
-        users_id do único usuário do GLPI com esse e-mail (exato, sem caixa);
-        None se nenhum, ambíguo ou erro. searchText faz LIKE, daí o filtro aqui.
+        users_id do único usuário ATIVO do GLPI com esse e-mail (exato, sem
+        caixa); None se nenhum, ambíguo, inativo/na lixeira (spec 010) ou erro.
+        searchText faz LIKE, daí o filtro aqui.
         Ex.: glpi_abertura.buscar_usuario_por_email("paula.avila@caraguatatuba.sp.gov.br") -> 173
         """
         if not email:
@@ -52,7 +53,18 @@ class GlpiAberturaClient:
         ids = {e.get("users_id") for e in emails if (e.get("email") or "").lower() == email.lower()}
         if len(ids) > 1:
             log(f"⚠️ E-mail {email} pertence a {len(ids)} usuários do GLPI ({sorted(ids)}) — usando o requerente padrão")
-        return ids.pop() if len(ids) == 1 else None
+        if len(ids) != 1:
+            return None
+        id_usuario = ids.pop()
+        return id_usuario if self._usuario_ativo(id_usuario) else None
+
+    def _usuario_ativo(self, id_usuario: int) -> bool:
+        """Ativo e fora da lixeira; falha na consulta conta como inativo (cai no requerente padrão)."""
+        resp = self._get(f"/User/{id_usuario}")
+        if resp.status_code != 200:
+            return False
+        usuario = resp.json()
+        return usuario.get("is_active") == 1 and not usuario.get("is_deleted")
 
     def criar_chamado(self, campos: dict) -> ResultadoCriacaoGlpi:
         """

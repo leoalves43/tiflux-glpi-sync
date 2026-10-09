@@ -127,8 +127,9 @@ class Config:
     # (renomeado no GLPI pra "Suporte Embras")
     id_glpi_leo: int = 4988
 
-    # Usuária inativada no GLPI — não é mais usada pra novas atribuições,
-    # só reconhecida como autoria própria em followups antigos (anti-eco)
+    # Sânia: não é mais usada pra novas atribuições, só reconhecida como
+    # autoria própria em followups antigos (anti-eco). O usuário segue ativo
+    # no GLPI (conferido em 2026-10-09), então followups dela não vão ao Tiflux.
     id_glpi_sania: int = 4816
 
     # Máximo de anexo aceito pelo Tiflux

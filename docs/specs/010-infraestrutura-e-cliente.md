@@ -19,6 +19,8 @@ cliente SP-CARAGUATATUBA-PM.
 - Ticket de outro cliente nunca vira chamado no GLPI, mesmo se aparecer numa
   listagem ou numa retentativa.
 - A data de corte continua valendo no ciclo; só o comando manual pode ignorá-la.
+- Requerente achado pelo e-mail mas inativo ou na lixeira no GLPI conta como
+  não encontrado (vira Suporte Embras).
 
 ## Acceptance criteria
 1. Ticket novo na mesa 38853 -> chamado GLPI categoria 348, entidade STII etc.

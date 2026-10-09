@@ -296,6 +296,7 @@ class TestClienteAbertura(unittest.TestCase):
     def test_reusa_a_sessao_autenticada(self):
         fake = FakeRequests()
         fake.programar("GET", "/UserEmail", FakeResponse(200, [{"users_id": 173, "email": "a@x.com"}]))
+        fake.programar("GET", "/User/173", FakeResponse(200, {"is_active": 1}))
         with patch("sync.glpi_client.requests", fake):
             cliente = _client(fake).cliente_abertura()
         self.assertEqual(cliente.buscar_usuario_por_email("a@x.com"), 173)
