@@ -8,6 +8,7 @@ import requests
 from requests.adapters import HTTPAdapter
 
 from sync.config import Config, log
+from sync.glpi_abertura_client import GlpiAberturaClient
 
 Anexo = tuple[str, bytes, str]
 
@@ -86,6 +87,10 @@ class GlpiClient:
             config.url_glpi, config.app_token, headers, session=session,
             timeout=config.timeout_http_segundos, tamanho_lote_sondagem=config.tamanho_lote_sondagem,
         )
+
+    def cliente_abertura(self) -> GlpiAberturaClient:
+        """Escritas da abertura Tiflux -> GLPI (spec 009) nesta mesma sessão."""
+        return GlpiAberturaClient(self._url_base, self._headers, self._session, self._timeout)
 
     def encerrar_sessao(self) -> None:
         try:

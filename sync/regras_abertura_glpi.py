@@ -22,6 +22,9 @@ ORIGEM_GLPI_STI = 6
 LOCALIZACAO_GLPI_AREA_TECNICA = 1685
 GRUPO_GLPI_EMBRAS_ATENDIMENTOS = 22
 PRIORIDADE_GLPI_MEDIA = 3
+# Mesmo tipo dos chamados já sincronizados (ex.: GLPI #34900); as 4
+# categorias aceitam incidente e requisição.
+TIPO_GLPI_INCIDENTE = 1
 # Só dígitos, mesmo formato dos telefones já gravados no plugin do GLPI.
 TELEFONE_GLPI_PADRAO = "1238971100"
 
@@ -84,3 +87,27 @@ def conteudo_glpi_aberto_pelo_tiflux(requestor: dict | None, descricao_html: str
     email = (requestor or {}).get("email") or "Sem e-mail"
     solicitante = html.escape(f"Solicitante: {nome} <{email}>", quote=False)
     return f"<p>{solicitante}</p>{descricao_html or ''}"
+
+
+def campos_chamado_glpi(ticket_tiflux: dict, id_requerente: int, id_tecnico: int) -> dict:
+    """
+    Input do POST /Ticket no GLPI para um ticket lido do Tiflux (GET individual,
+    que traz `description`). Atores vão no próprio POST; urgência e impacto 3
+    fazem a matriz do GLPI dar prioridade 3, a mesma enviada.
+    Ex.: campos_chamado_glpi(ticket, 173, 4988)["itilcategories_id"] -> 272
+    """
+    return {
+        "name": titulo_glpi_aberto_pelo_tiflux(int(ticket_tiflux["ticket_number"]), ticket_tiflux.get("title") or ""),
+        "content": conteudo_glpi_aberto_pelo_tiflux(ticket_tiflux.get("requestor"), ticket_tiflux.get("description")),
+        "entities_id": ENTIDADE_GLPI_STII,
+        "itilcategories_id": CATEGORIA_GLPI_POR_MESA[ticket_tiflux["desk"]["id"]],
+        "requesttypes_id": ORIGEM_GLPI_STI,
+        "locations_id": LOCALIZACAO_GLPI_AREA_TECNICA,
+        "type": TIPO_GLPI_INCIDENTE,
+        "urgency": PRIORIDADE_GLPI_MEDIA,
+        "impact": PRIORIDADE_GLPI_MEDIA,
+        "priority": PRIORIDADE_GLPI_MEDIA,
+        "_users_id_requester": id_requerente,
+        "_users_id_assign": id_tecnico,
+        "_groups_id_observer": GRUPO_GLPI_EMBRAS_ATENDIMENTOS,
+    }

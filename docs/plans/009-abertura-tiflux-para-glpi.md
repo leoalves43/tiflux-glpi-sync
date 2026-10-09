@@ -75,7 +75,7 @@ chamadas novas vão para módulos novos.
   nas consultas existentes. Files: db_abertura_tiflux, db_followups (se
   preciso), audit_tables.toon, testes. Done: testes; queries de rodízio não
   veem a direção nova.
-- [ ] 5. Escrita no GLPI: achar usuário por e-mail, criar chamado com atores,
+- [x] 5. Escrita no GLPI: achar usuário por e-mail, criar chamado com atores,
   gravar telefone. Files: glpi_abertura_client, glpi_client, testes. Done:
   testes com fake.
 - [ ] 6. Tiflux: renomear ticket, listar/baixar arquivos; anexos -> GLPI

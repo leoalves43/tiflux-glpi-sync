@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from sync.regras_abertura_glpi import (
     TELEFONE_GLPI_PADRAO,
+    campos_chamado_glpi,
     conteudo_glpi_aberto_pelo_tiflux,
     telefone_para_glpi,
     ticket_candidato_a_abertura,
@@ -69,6 +70,22 @@ class TestConteudoGlpi(unittest.TestCase):
     def test_sem_solicitante_nem_descricao(self):
         conteudo = conteudo_glpi_aberto_pelo_tiflux(None, None)
         self.assertEqual(conteudo, "<p>Solicitante: Desconhecido &lt;Sem e-mail&gt;</p>")
+
+
+class TestCamposChamadoGlpi(unittest.TestCase):
+    def test_campos_fixos_da_spec_e_atores(self):
+        # AC 1 (parte GLPI): entidade STII, categoria pela mesa, origem, localização, prioridade, atores.
+        ticket = {**_TICKET_NOVO, "description": "<p>Erro</p>", "requestor": {"name": "Ana", "email": "a@x.com"}}
+        campos = campos_chamado_glpi(ticket, 173, 4988)
+        self.assertEqual(campos["name"], "#364990 - Erro no boleto")
+        self.assertEqual(
+            {k: campos[k] for k in ("entities_id", "itilcategories_id", "requesttypes_id", "locations_id", "priority")},
+            {"entities_id": 1, "itilcategories_id": 272, "requesttypes_id": 6, "locations_id": 1685, "priority": 3},
+        )
+        self.assertEqual(
+            (campos["_users_id_requester"], campos["_users_id_assign"], campos["_groups_id_observer"]), (173, 4988, 22),
+        )
+        self.assertTrue(campos["content"].endswith("<p>Erro</p>"))
 
 
 if __name__ == "__main__":

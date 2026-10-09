@@ -292,6 +292,16 @@ class TestAtualizarTitulo(unittest.TestCase):
         self.assertIn("campo bloqueado", erro)
 
 
+class TestClienteAbertura(unittest.TestCase):
+    def test_reusa_a_sessao_autenticada(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/UserEmail", FakeResponse(200, [{"users_id": 173, "email": "a@x.com"}]))
+        with patch("sync.glpi_client.requests", fake):
+            cliente = _client(fake).cliente_abertura()
+        self.assertEqual(cliente.buscar_usuario_por_email("a@x.com"), 173)
+        self.assertEqual(fake.chamadas[-1][2]["headers"]["Session-Token"], "sess")
+
+
 class TestDefinirStatusPendente(unittest.TestCase):
     def test_sucesso_manda_status_4(self):
         fake = FakeRequests()
