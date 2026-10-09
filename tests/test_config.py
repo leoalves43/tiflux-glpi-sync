@@ -2,6 +2,7 @@ import io
 import os
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 from sync.config import Config, log
@@ -56,6 +57,16 @@ class TestConfigCarregar(unittest.TestCase):
             self.caminho_env, ambiente={"MARGEM_CHECKPOINT_TIFLUX_MINUTOS": "10", "VARREDURA_COMPLETA_POR_EXECUCAO": "3"},
         )
         self.assertEqual((config.margem_checkpoint_tiflux_minutos, config.varredura_completa_por_execucao), (10, 3))
+
+    def test_abertura_tiflux_desde_vazia_desliga_e_iso_utc_liga(self):
+        self.assertIsNone(Config.carregar(self.caminho_env, ambiente={}).abertura_tiflux_desde)
+        config = Config.carregar(self.caminho_env, ambiente={"ABERTURA_TIFLUX_DESDE": "2026-10-10T12:00:00Z"})
+        self.assertEqual(config.abertura_tiflux_desde, datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc))
+
+    def test_abertura_tiflux_desde_sem_fuso_ou_invalida_falha_com_o_valor(self):
+        for valor in ("2026-10-10T12:00:00", "amanhã"):
+            with self.assertRaisesRegex(ValueError, valor):
+                Config.carregar(self.caminho_env, ambiente={"ABERTURA_TIFLUX_DESDE": valor})
 
 
 if __name__ == "__main__":

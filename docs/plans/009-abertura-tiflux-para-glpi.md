@@ -68,7 +68,7 @@ chamadas novas vão para módulos novos.
 - [x] 2. Guarda `#<n> - ` no caminho GLPI -> Tiflux. Files:
   processamento_chamado, forcar_sincronizacao (reuso), testes. Done: teste
   de regressão "título prefixado não cria ticket".
-- [ ] 3. Regras puras: de-para mesa -> categoria, constantes fixas, telefone
+- [x] 3. Regras puras: de-para mesa -> categoria, constantes fixas, telefone
   E.164 -> dígitos (padrão `1238971100`), filtro de candidato, títulos.
   Files: regras_abertura_glpi, config, .env.example, testes. Done: testes.
 - [ ] 4. Auditoria da intenção (`abertura_tiflux`) e exclusão dessa direção

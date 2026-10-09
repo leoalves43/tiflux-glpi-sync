@@ -4,7 +4,7 @@ import os
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def log(msg: str) -> None:
@@ -44,6 +44,24 @@ def inteiro_nao_negativo(cred: Mapping[str, str], chave: str, padrao: int) -> in
     if not bruto.isdigit():
         raise ValueError(f"{chave}={bruto!r} inválido: esperado inteiro >= 0 (ex.: {padrao})")
     return int(bruto)
+
+
+def data_utc_opcional(cred: Mapping[str, str], chave: str) -> datetime | None:
+    """
+    Lê `chave` como data/hora ISO 8601 em UTC; ausente ou vazia vira None.
+    Ex.: data_utc_opcional({"ABERTURA_TIFLUX_DESDE": "2026-10-10T12:00:00Z"}, "ABERTURA_TIFLUX_DESDE")
+         -> datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
+    """
+    bruto = (cred.get(chave) or "").strip()
+    if not bruto:
+        return None
+    try:
+        data = datetime.fromisoformat(bruto)
+    except ValueError as e:
+        raise ValueError(f"{chave}={bruto!r} inválido: esperado ISO 8601 UTC (ex.: 2026-10-10T12:00:00Z)") from e
+    if data.tzinfo is None:
+        raise ValueError(f"{chave}={bruto!r} sem fuso: esperado ISO 8601 UTC (ex.: 2026-10-10T12:00:00Z)")
+    return data.astimezone(timezone.utc)
 
 
 @dataclass(frozen=True)
@@ -147,6 +165,11 @@ class Config:
     # cobre ~480 chamados por dia.
     varredura_completa_por_execucao: int = 1
 
+    # Spec 009: tickets abertos no Tiflux a partir deste instante (UTC) viram
+    # chamado no GLPI. None = funcionalidade desligada. Fixo no .env (nunca a
+    # hora de subida do container), pra não importar tickets antigos.
+    abertura_tiflux_desde: datetime | None = None
+
     @staticmethod
     def carregar(caminho_credenciais: str = ".env", ambiente: Mapping[str, str] | None = None) -> "Config":
         """
@@ -175,4 +198,5 @@ class Config:
             reserva_requisicoes_tiflux=inteiro_nao_negativo(cred, "RESERVA_REQUISICOES_TIFLUX", 5),
             margem_checkpoint_tiflux_minutos=inteiro_nao_negativo(cred, "MARGEM_CHECKPOINT_TIFLUX_MINUTOS", 5),
             varredura_completa_por_execucao=inteiro_nao_negativo(cred, "VARREDURA_COMPLETA_POR_EXECUCAO", 1),
+            abertura_tiflux_desde=data_utc_opcional(cred, "ABERTURA_TIFLUX_DESDE"),
         )
