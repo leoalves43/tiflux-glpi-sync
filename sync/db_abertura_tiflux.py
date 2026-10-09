@@ -47,32 +47,33 @@ def obter_numeros_tiflux_na_auditoria(conn: ConexaoDb, config: Config) -> set[in
 
 def registrar_intencao_abertura(conn: ConexaoDb, config: Config, numero_tiflux: int) -> None:
     """Grava 'pendente' ANTES do POST no GLPI. Ex.: registrar_intencao_abertura(conn, config, 364990)"""
-    _registrar(conn, config, numero_tiflux, 0, None, STATUS_ABERTURA_PENDENTE,
+    _registrar(conn, config, numero_tiflux, None, STATUS_ABERTURA_PENDENTE,
                "Abrindo chamado no GLPI — se ficar assim, o resultado é desconhecido: revisar manualmente")
 
 
 def registrar_abertura_sucesso(conn: ConexaoDb, config: Config, numero_tiflux: int, id_glpi: int) -> None:
     """Ex.: registrar_abertura_sucesso(conn, config, 364990, 35001)"""
-    _registrar(conn, config, numero_tiflux, id_glpi, id_glpi, STATUS_ABERTURA_SUCESSO,
+    # id_glpi da linha fica 0: o upsert de registrar_resultado_followup não
+    # atualiza essa coluna (visto ao vivo, GLPI #35009); o chamado vai em id_destino.
+    _registrar(conn, config, numero_tiflux, id_glpi, STATUS_ABERTURA_SUCESSO,
                f"Ticket Tiflux #{numero_tiflux} aberto no GLPI como chamado #{id_glpi}")
 
 
 def registrar_abertura_erro(conn: ConexaoDb, config: Config, numero_tiflux: int, mensagem: str) -> None:
     """Só quando nada foi criado (recusa clara do GLPI, ticket ilegível): a próxima execução tenta de novo."""
-    _registrar(conn, config, numero_tiflux, 0, None, STATUS_ABERTURA_ERRO, mensagem)
+    _registrar(conn, config, numero_tiflux, None, STATUS_ABERTURA_ERRO, mensagem)
 
 
 def registrar_abertura_ignorada(conn: ConexaoDb, config: Config, numero_tiflux: int) -> None:
     """Terminal: sem isso um 'erro' que deixou de ser candidato custaria um GET por execução para sempre."""
-    _registrar(conn, config, numero_tiflux, 0, None, STATUS_ABERTURA_IGNORADO,
+    _registrar(conn, config, numero_tiflux, None, STATUS_ABERTURA_IGNORADO,
                "Deixou de ser candidato à abertura no GLPI (mesa, título ou data) — não será retentado")
 
 
 def _registrar(
-    conn: ConexaoDb, config: Config, numero_tiflux: int, id_glpi: int, id_destino: int | None, status: str,
-    mensagem: str,
+    conn: ConexaoDb, config: Config, numero_tiflux: int, id_destino: int | None, status: str, mensagem: str,
 ) -> None:
     db_followups.registrar_resultado_followup(
-        conn, config, id_glpi, numero_tiflux, DIRECAO_ABERTURA_TIFLUX, "abertura", numero_tiflux, id_destino,
+        conn, config, 0, numero_tiflux, DIRECAO_ABERTURA_TIFLUX, "abertura", numero_tiflux, id_destino,
         status, mensagem,
     )

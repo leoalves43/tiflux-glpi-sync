@@ -42,7 +42,7 @@ class TestRegistrarAbertura(unittest.TestCase):
     def test_sucesso_guarda_id_glpi_em_id_destino(self):
         conn = FakeConnection()
         db_abertura_tiflux.registrar_abertura_sucesso(conn, _CONFIG, 364990, 35001)
-        self.assertEqual(_linha_gravada(conn)[:7], (35001, 364990, "abertura_tiflux", "abertura", 364990, 35001, "sucesso"))
+        self.assertEqual(_linha_gravada(conn)[:7], (0, 364990, "abertura_tiflux", "abertura", 364990, 35001, "sucesso"))
 
     def test_erro_guarda_mensagem_sem_id_destino(self):
         conn = FakeConnection()

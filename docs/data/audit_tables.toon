@@ -14,7 +14,7 @@ api_glpi_tiflux_followups[12]{column,type,nullable,default,note}:
   numero_tiflux,INTEGER,true,-,-
   direcao,VARCHAR(20),false,-,glpi_para_tiflux|tiflux_para_glpi|verificacao_status|checkpoint_tiflux|varredura_completa|abertura_tiflux (checkpoint/varredura: spec 008 marker rows; abertura_tiflux: spec 009 Tiflux->GLPI creation)
   tipo,VARCHAR(20),false,-,publica|interna|status|encerramento|reabertura|reabertura_tiflux|checkpoint|abertura
-  id_origem,INTEGER,false,-,part of unique conflict key (direcao,id_origem); negative -id_glpi sentinel: verificacao_status scan marker; tiflux_para_glpi cascade state; glpi_para_tiflux Tiflux-reopen attempt (spec 004); varredura_completa safety-sweep marker. checkpoint_tiflux: single row id_glpi=0 id_origem=0. abertura_tiflux: id_origem=numero_tiflux; id_glpi=0 until sucesso
+  id_origem,INTEGER,false,-,part of unique conflict key (direcao,id_origem); negative -id_glpi sentinel: verificacao_status scan marker; tiflux_para_glpi cascade state; glpi_para_tiflux Tiflux-reopen attempt (spec 004); varredura_completa safety-sweep marker. checkpoint_tiflux: single row id_glpi=0 id_origem=0. abertura_tiflux: id_origem=numero_tiflux; id_glpi always 0, GLPI ticket id in id_destino
   id_destino,INTEGER,true,-,set only on success; null on error
   status,VARCHAR(20),false,-,sucesso|erro|fechado|solucionado|aberto|marcador|prioritario|pendente (fechado/solucionado/aberto: verificacao_status scan marker, only fechado is batch-limited; marcador/prioritario: spec 008 rows; pendente: abertura_tiflux outcome unknown, never auto-retried; abertura_tiflux also uses erro=retry, ignorado=terminal)
   mensagem,TEXT,true,-,checkpoint_tiflux row: ISO 8601 UTC start of the last fully-read run
