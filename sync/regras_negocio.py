@@ -113,3 +113,16 @@ def telefone_para_tiflux(telefone_glpi: str | None) -> str | None:
     if len(digitos) not in (10, 11):
         return None
     return f"+55{digitos}"
+
+
+# Título de chamado no GLPI já vinculado a um ticket do Tiflux: "#<numero> - <titulo>".
+_REGEX_TITULO_PREFIXADO_TIFLUX = re.compile(r"^#(\d+) - ")
+
+
+def numero_tiflux_no_titulo(titulo_glpi: str | None) -> str | None:
+    """
+    Número do ticket do Tiflux no prefixo do título do GLPI, ou None se não
+    prefixado. Ex.: numero_tiflux_no_titulo("#361535 - Erro") -> "361535"
+    """
+    match = _REGEX_TITULO_PREFIXADO_TIFLUX.match((titulo_glpi or "").strip())
+    return match.group(1) if match else None

@@ -65,7 +65,7 @@ chamadas novas vão para módulos novos.
 - [x] 1. Status Pendente: criação GLPI -> Tiflux e reabertura em cascata
   usam 4. Files: glpi_client, processamento_chamado, cascata_status, testes.
   Done: testes verdes; nenhum `status: 1` restante.
-- [ ] 2. Guarda `#<n> - ` no caminho GLPI -> Tiflux. Files:
+- [x] 2. Guarda `#<n> - ` no caminho GLPI -> Tiflux. Files:
   processamento_chamado, forcar_sincronizacao (reuso), testes. Done: teste
   de regressão "título prefixado não cria ticket".
 - [ ] 3. Regras puras: de-para mesa -> categoria, constantes fixas, telefone

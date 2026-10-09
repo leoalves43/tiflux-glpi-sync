@@ -7,6 +7,7 @@ from sync.regras_negocio import (
     definir_prioridade,
     definir_tecnico,
     depara_categoria,
+    numero_tiflux_no_titulo,
     telefone_para_tiflux,
 )
 
@@ -93,6 +94,16 @@ class TestCabecalhoPrioridadeGlpi(unittest.TestCase):
     def test_valor_desconhecido_cai_em_media(self):
         for prioridade in (99, None):
             self.assertEqual(cabecalho_prioridade_glpi(prioridade), cabecalho_prioridade_glpi(3))
+
+
+class TestNumeroTifluxNoTitulo(unittest.TestCase):
+    def test_titulo_prefixado_devolve_numero(self):
+        self.assertEqual(numero_tiflux_no_titulo("#361535 - Erro no boleto"), "361535")
+        self.assertEqual(numero_tiflux_no_titulo(" #361535 - Erro"), "361535")
+
+    def test_titulo_sem_prefixo_ou_vazio_devolve_none(self):
+        self.assertIsNone(numero_tiflux_no_titulo("Erro #361535 - boleto"))
+        self.assertIsNone(numero_tiflux_no_titulo(None))
 
 
 if __name__ == "__main__":

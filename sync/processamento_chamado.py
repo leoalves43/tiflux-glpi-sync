@@ -14,6 +14,7 @@ from sync.regras_negocio import (
     definir_prioridade,
     definir_tecnico,
     depara_categoria,
+    numero_tiflux_no_titulo,
     telefone_para_tiflux,
 )
 from sync.tiflux_client import TifluxClient
@@ -71,6 +72,7 @@ def _processar(glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_chamad
     numero_existente = _buscar_ticket_existente(tiflux, id_chamado)
     if numero_existente is not None:
         return _vincular_ticket_existente(glpi, id_chamado, ticket, numero_existente)
+    _recusar_titulo_ja_prefixado(ticket)
 
     planejado = _planejar_ticket_tiflux(glpi, tiflux, config, id_chamado, ticket)
     ticket_number_tiflux = _criar_ticket(tiflux, planejado.form_data)
@@ -161,6 +163,23 @@ def _vincular_ticket_existente(glpi: GlpiClient, id_chamado: int, ticket: dict, 
     msg = (f"Ticket #{numero_tiflux} já existia no Tiflux (aberto manualmente) — "
            f"vinculado ao chamado GLPI #{id_chamado} sem criar duplicata{aviso_titulo}")
     return "sucesso", numero_tiflux, msg
+
+
+def _recusar_titulo_ja_prefixado(ticket: dict) -> None:
+    """
+    Título "#<n> - ..." sem ticket "(<id_glpi>)" no Tiflux = o par já existe,
+    mas a auditoria não sabe (ex.: chamado aberto pelo caminho Tiflux -> GLPI,
+    spec 009, com queda antes de gravar a auditoria). Criar duplicaria o
+    ticket: fica como erro pra revisão manual.
+    """
+    numero = numero_tiflux_no_titulo(ticket.get("name"))
+    if numero is None:
+        return
+    raise _ChamadoNaoSincronizavel(
+        "erro",
+        f"Título já prefixado com #{numero} (esperado título sem prefixo) mas nenhum ticket "
+        f"'(<id_glpi>)' achado no Tiflux — par provável sem auditoria, requer revisão manual",
+    )
 
 
 def _resolver_mesa(ticket: dict, tiflux: TifluxClient) -> int:

@@ -15,7 +15,6 @@ bug conhecido documentado em docs/ARCHITECTURE.md.
 
 import argparse
 import json
-import re
 import sys
 
 from sync import db_chamados
@@ -24,6 +23,7 @@ from sync.config import Config, log
 from sync.glpi_client import GlpiClient
 from sync.processamento_chamado import processar_chamado
 from sync.publicacao_followups import sincronizar_followups_glpi_para_tiflux, sincronizar_followups_tiflux_para_glpi
+from sync.regras_negocio import numero_tiflux_no_titulo
 from sync.tiflux_client import TifluxClient
 from sync.tipos import ConexaoDb, NumeroTiflux
 
@@ -32,7 +32,6 @@ ACAO_RECUSAR_NUMERO_EXISTENTE = "recusar_numero_existente"
 ACAO_FOLLOWUPS = "followups"
 
 _CHAVE_LOCK = "forcar_sincronizacao"
-_REGEX_TITULO_JA_SINCRONIZADO = re.compile(r"^#(\d+) - ")
 
 
 def decidir_acao(estado: tuple[str, int | None] | None) -> str:
@@ -184,8 +183,7 @@ def _numero_tiflux_no_titulo(glpi: GlpiClient, id_glpi: int) -> str | None:
     ticket, _ = glpi.obter_ticket(id_glpi)
     if ticket is None:
         return None
-    match = _REGEX_TITULO_JA_SINCRONIZADO.match(ticket.get("name") or "")
-    return match.group(1) if match else None
+    return numero_tiflux_no_titulo(ticket.get("name"))
 
 
 def _forcar_followups(
