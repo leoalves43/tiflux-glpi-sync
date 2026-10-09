@@ -23,7 +23,7 @@ ser sincronizados como nos chamados abertos pelo GLPI.
 - Origem da requisição: sempre STI (6).
 - Localização: sempre STI Área Técnica (1685).
 - Telefone (plugin Fields "Telefone / Linhas"): o telefone do solicitante no
-  Tiflux; vazio no Tiflux -> `(12) 3897-1100`.
+  Tiflux; vazio no Tiflux -> `1238971100` (só dígitos, como os dados existentes).
 - Requerente: usuário do GLPI com o mesmo e-mail do solicitante do Tiflux; sem
   correspondência -> SUPORTE EMBRAS (4988).
 - Observador: sempre o grupo Embras - Atendimentos (22).
