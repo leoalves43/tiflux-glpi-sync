@@ -96,7 +96,7 @@ class Config:
     # nunca mais ser revisitado, já que a sondagem normalmente só avança a partir
     # do maior ID já visto (chamado #33769 ficou órfão assim). Contar confirmações
     # em vez de uma quantidade fixa de IDs faz o recuo se esticar sozinho quando
-    # há trechos longos de 'ignorado' (fora do grupo observador) no meio.
+    # há trechos longos de 'ignorado' (categoria fora do de-para) no meio.
     quantidade_registros_para_recuo: int = 10
 
     # Abertos no GLPI são varridos todos, em toda execução (spec 003); este
@@ -116,9 +116,6 @@ class Config:
 
     cliente_tiflux_id: int = 762707
     id_solicitante_padrao: int = 3758056  # Ju STII
-
-    # Só sincroniza chamados que tenham algum desses grupos como OBSERVADOR no GLPI
-    ids_grupo_observador: tuple[int, ...] = (21, 22)  # EMBRAS - Backlog, EMBRAS - Atendimentos
 
     id_tecnico_leo: int = 117180
 

@@ -9,6 +9,7 @@ from sync.config import Config, log
 from sync.glpi_client import GlpiClient
 from sync.html_texto import html_para_texto_plano
 from sync.regras_negocio import (
+    GRUPO_GLPI_EMBRAS_ATENDIMENTOS,
     cabecalho_prioridade_glpi,
     definir_autor_glpi,
     definir_prioridade,
@@ -38,7 +39,7 @@ def processar_chamado(glpi: GlpiClient, tiflux: TifluxClient, config: Config, id
     e atribui o técnico.
     Retorna (status, numero_tiflux, mensagem):
       - status='sucesso'  -> sincronizado normalmente
-      - status='ignorado' -> fora do escopo (ex: sem o grupo observador exigido);
+      - status='ignorado' -> fora do escopo (categoria fora do de-para, spec 011);
         NÃO é reprocessado nas próximas execuções
       - status='erro'     -> falha real (API, rede, dado inconsistente);
         É reprocessado automaticamente nas próximas execuções
@@ -66,8 +67,8 @@ class _TicketPlanejado:
 
 
 def _processar(glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_chamado: int) -> ResultadoChamado:
-    _validar_escopo(glpi, config, id_chamado)
     ticket = _buscar_ticket(glpi, id_chamado)
+    _validar_escopo(ticket)
 
     numero_existente = _buscar_ticket_existente(tiflux, id_chamado)
     if numero_existente is not None:
@@ -110,9 +111,10 @@ def _completar_apos_criacao(
     """Passos pós-criação que não derrubam o chamado; devolve os avisos na ordem do log (anexos primeiro)."""
     aviso_titulo = _atualizar_titulo_glpi(glpi, id_chamado, ticket.get("name"), ticket_number_tiflux)
     aviso_tecnico_glpi = _atribuir_tecnico_glpi(glpi, id_chamado, config, ticket_number_tiflux)
+    aviso_grupo_glpi = _atribuir_grupo_observador_glpi(glpi, id_chamado, ticket_number_tiflux)
     aviso_status_glpi = _deixar_pendente_glpi(glpi, id_chamado, ticket_number_tiflux)
     resumo_anexos = _sincronizar_anexos(glpi, tiflux, config, id_chamado, ticket_number_tiflux)
-    return f"{resumo_anexos}{aviso_titulo}{aviso_tecnico_glpi}{aviso_status_glpi}"
+    return f"{resumo_anexos}{aviso_titulo}{aviso_tecnico_glpi}{aviso_grupo_glpi}{aviso_status_glpi}"
 
 
 def _mensagem_criacao(planejado: _TicketPlanejado, ticket_number_tiflux: str, avisos: str) -> str:
@@ -124,10 +126,14 @@ def _mensagem_criacao(planejado: _TicketPlanejado, ticket_number_tiflux: str, av
             f"{avisos}")
 
 
-def _validar_escopo(glpi: GlpiClient, config: Config, id_chamado: int) -> None:
-    esta_no_escopo, motivo = glpi.chamado_tem_grupo_observador(id_chamado, config.ids_grupo_observador)
-    if not esta_no_escopo:
-        raise _ChamadoNaoSincronizavel("ignorado", motivo)
+def _validar_escopo(ticket: dict) -> None:
+    """
+    Escopo = categoria do de-para (spec 011). Antes era o grupo observador
+    EMBRAS, que a triagem às vezes demorava a pôr; agora a integração o põe.
+    """
+    categoria_glpi = ticket.get("itilcategories_id")
+    if depara_categoria(categoria_glpi) is None:
+        raise _ChamadoNaoSincronizavel("ignorado", f"Categoria GLPI {categoria_glpi} fora do de-para (sem mesa no Tiflux)")
 
 
 def _buscar_ticket(glpi: GlpiClient, id_chamado: int) -> dict:
@@ -183,15 +189,8 @@ def _recusar_titulo_ja_prefixado(ticket: dict) -> None:
 
 
 def _resolver_mesa(ticket: dict, tiflux: TifluxClient) -> int:
-    categoria_glpi = ticket.get("itilcategories_id")
-    mesa_tiflux = depara_categoria(categoria_glpi)
-    if mesa_tiflux is None:
-        raise _ChamadoNaoSincronizavel(
-            "erro",
-            f"Categoria GLPI {categoria_glpi} não tem mesa correspondente em depara_categoria() "
-            f"— chamado não sincronizado, requer revisão manual",
-        )
-
+    # Categoria sem mesa já saiu como 'ignorado' em _validar_escopo (spec 011).
+    mesa_tiflux = depara_categoria(ticket.get("itilcategories_id"))
     if not tiflux.validar_mesa_do_cliente(mesa_tiflux):
         raise _ChamadoNaoSincronizavel(
             "erro",
@@ -268,6 +267,18 @@ def _atribuir_tecnico_glpi(glpi: GlpiClient, id_chamado: int, config: Config, ti
         return ""
     log(f"⚠️ Ticket #{ticket_number_tiflux} criado, mas falhou ao atribuir técnico no GLPI: {erro}")
     return " | Aviso: falha ao atribuir técnico no GLPI"
+
+
+def _atribuir_grupo_observador_glpi(glpi: GlpiClient, id_chamado: int, ticket_number_tiflux: str) -> str:
+    """
+    Junto do técnico Suporte Embras, o grupo EMBRAS - Atendimentos vira
+    observador (spec 011). Mesmo motivo do técnico: falha só avisa.
+    """
+    sucesso, erro = glpi.adicionar_grupo_observador(id_chamado, GRUPO_GLPI_EMBRAS_ATENDIMENTOS)
+    if sucesso:
+        return ""
+    log(f"⚠️ Ticket #{ticket_number_tiflux} criado, mas falhou ao pôr o grupo observador no GLPI: {erro}")
+    return " | Aviso: falha ao pôr o grupo observador no GLPI"
 
 
 def _deixar_pendente_glpi(glpi: GlpiClient, id_chamado: int, ticket_number_tiflux: str) -> str:

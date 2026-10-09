@@ -18,7 +18,8 @@ Three sync passes per run, all driven from `sync/main.py:main()`:
    `GET /Ticket/{id}` (`/search/Ticket` is unreliable here — don't use it).
    `processar_chamado()` links an existing Tiflux ticket titled `"<titulo> (<id_glpi>)"`
    instead of duplicating, refuses GLPI titles already prefixed `#<n> - `, else
-   creates the Tiflux ticket, assigns a technician, uploads attachments.
+   creates the Tiflux ticket, assigns a technician, uploads attachments. Scope =
+   category in `depara_categoria` (spec 011; no observer-group check — it adds group 22).
 2. **Ticket creation, Tiflux -> GLPI (spec 009, off unless `ABERTURA_TIFLUX_DESDE`).**
    `abrir_chamados_do_tiflux()` (sync/abertura_tiflux_para_glpi.py) picks candidates from
    the panorama's listed tickets (0 extra requests) + `erro` retries; per ticket: GET,

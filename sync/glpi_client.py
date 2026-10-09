@@ -394,24 +394,21 @@ class GlpiClient:
             return lista_emails[0].get("email")
         return None
 
-    def chamado_tem_grupo_observador(
-        self, id_chamado: int, ids_grupo_observador: tuple[int, ...],
-    ) -> tuple[bool, str | None]:
+    def adicionar_grupo_observador(self, id_chamado: int, id_grupo: int) -> tuple[bool, str | None]:
         """
-        Confere se algum ID de ids_grupo_observador está vinculado ao chamado
-        como OBSERVADOR (type=3 em Group_Ticket, conforme GLPI: 1=Requerente,
-        2=Atribuído, 3=Observador).
-        Retorna (bool, motivo_se_nao_encontrado_ou_erro).
+        POST /Group_Ticket type=3 (Observador; 1=Requerente, 2=Atribuído), só
+        se o grupo ainda não for observador do chamado (spec 011).
+        Ex.: glpi.adicionar_grupo_observador(35030, 22) -> (True, None)
         """
         resp = self._get(f"/Ticket/{id_chamado}/Group_Ticket")
-        if resp.status_code not in (200, 206):
-            return False, f"Falha ao consultar grupos do chamado no GLPI (status {resp.status_code})"
-
-        for vinculo in resp.json():
-            if vinculo.get("type") == 3 and vinculo.get("groups_id") in ids_grupo_observador:
-                return True, None
-
-        return False, f"Chamado não tem nenhum dos grupos observadores {ids_grupo_observador}"
+        vinculos = resp.json() if resp.status_code in (200, 206) else []
+        if any(v.get("type") == 3 and v.get("groups_id") == id_grupo for v in vinculos):
+            return True, None
+        payload = {"input": {"tickets_id": id_chamado, "groups_id": id_grupo, "type": 3}}
+        resp = self._session.post(f"{self._url_base}/Group_Ticket", json=payload, headers=self._headers, timeout=self._timeout)
+        if resp.status_code not in (200, 201):
+            return False, f"Falha ao pôr o grupo {id_grupo} como observador do chamado #{id_chamado} ({resp.status_code}): {resp.text}"
+        return True, None
 
     def obter_anexos(self, id_chamado: int, tamanho_maximo_mb: int) -> tuple[list[Anexo], list[str]]:
         """

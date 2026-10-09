@@ -23,8 +23,8 @@ Cada execução (no Docker, 2 minutos depois do fim da anterior) tem três etapa
 
 ### 1. Chamado aberto no GLPI vira ticket no Tiflux
 
-- Sonda os IDs novos do GLPI e só considera chamados com um dos grupos
-  observadores EMBRAS (EMBRAS - Backlog ou EMBRAS - Atendimentos).
+- Sonda os IDs novos do GLPI e só considera chamados numa das categorias
+  abaixo, com ou sem grupo observador (a triagem pode pô-lo depois).
 - **Mesa** pela categoria do GLPI:
 
   | Categorias GLPI | Mesa Tiflux |
@@ -35,7 +35,9 @@ Cada execução (no Docker, 2 minutos depois do fim da anterior) tem três etapa
   | 282–286 | SUPRIMENTOS |
   | 348 | INFRAESTRUTURA |
 
-  Categoria fora da tabela fica como erro para revisão manual.
+  Chamado sem categoria ou com categoria fora da tabela é ignorado e
+  reconferido nos ciclos seguintes, enquanto estiver na faixa da sondagem
+  (se a categoria for corrigida a tempo, ele entra).
 - **Prioridade** fixa por mesa ("Solicitar um Atendimento"). A prioridade do
   GLPI e o texto de SLA correspondente vão no topo da descrição.
 - **Solicitante** achado (ou cadastrado) no Tiflux pelo e-mail do requerente,
@@ -44,7 +46,8 @@ Cada execução (no Docker, 2 minutos depois do fim da anterior) tem três etapa
 - Campo obrigatório "Módulo utilizado" sempre "Padrão". Anexos do chamado vão junto.
 - Título no Tiflux: `<titulo> (<id_glpi>)`. Título no GLPI ganha `#<numero_tiflux> - `.
 - No GLPI, o técnico atribuído passa a ser Suporte Embras (exigência do GLPI
-  para encerrar depois) e o chamado fica **Pendente**.
+  para encerrar depois), o grupo EMBRAS - Atendimentos entra como observador
+  (se ainda não estiver) e o chamado fica **Pendente**.
 - Proteções contra duplicata: se já existe no Tiflux um ticket com
   `(<id_glpi>)` no título, ele é vinculado em vez de criar outro; e chamado
   cujo título já começa com `#<numero> - ` nunca gera ticket novo.
@@ -125,7 +128,7 @@ Copie `exemplo.env` para `.env` na raiz e preencha:
 O `.env` nunca é commitado nem entra na imagem Docker. Variáveis de ambiente
 sobrescrevem o `.env`, então o mesmo arquivo serve com e sem Docker.
 
-IDs fixos de negócio (ID mínimo da sondagem, grupos observadores, técnicos,
+IDs fixos de negócio (ID mínimo da sondagem, grupo observador, técnicos,
 mesas, prioridades, campos do Tiflux) ficam em `sync/config.py`,
 `sync/regras_negocio.py` e `sync/regras_abertura_glpi.py`.
 

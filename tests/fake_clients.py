@@ -23,7 +23,8 @@ class FakeGlpiClient:
     def __init__(self):
         self.tickets: dict[int, dict] = {}
         self.status_ticket_ausente = 404
-        self.grupo_observador: dict[int, tuple[bool, str | None]] = {}
+        self.grupos_observadores_adicionados: list[tuple[int, int]] = []
+        self.resultado_adicionar_grupo_observador: tuple[bool, str | None] = (True, None)
         self.followups: dict[int, list[dict]] = {}
         self.requerentes: dict[int, tuple[str, str | None, int | None]] = {}
         self.nomes_usuarios: dict[int, str] = {}
@@ -46,8 +47,9 @@ class FakeGlpiClient:
         self.chamados_deixados_pendentes: list[int] = []
         self.resultado_definir_status_pendente: tuple[bool, str | None] = (True, None)
 
-    def chamado_tem_grupo_observador(self, id_chamado, ids_grupo_observador):
-        return self.grupo_observador.get(id_chamado, (True, None))
+    def adicionar_grupo_observador(self, id_chamado, id_grupo):
+        self.grupos_observadores_adicionados.append((id_chamado, id_grupo))
+        return self.resultado_adicionar_grupo_observador
 
     def obter_ticket(self, id_chamado):
         ticket = self.tickets.get(id_chamado)

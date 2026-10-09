@@ -88,7 +88,7 @@ class TestForcarCriacao(unittest.TestCase):
         self.assertEqual(len(conn.execucoes), 0)
 
     def test_ignorado_nao_grava_na_auditoria(self):
-        self.glpi.grupo_observador[1] = (False, "sem grupo observador")
+        self.glpi.tickets[1] = {"name": "x", "itilcategories_id": 999}  # fora do de-para (spec 011)
         conn = FakeConnection()
         resultado = _capturar_ultima_linha_json(
             lambda: forcar_sincronizacao._forcar_criacao(conn, _CONFIG, self.glpi, self.tiflux, 1)

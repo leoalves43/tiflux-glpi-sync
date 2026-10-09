@@ -38,7 +38,7 @@ def _sanear_win1252(texto: str) -> str:
 def obter_ids_ja_processados(conn: ConexaoDb, config: Config) -> set[int]:
     """
     IDs que já têm um resultado de sucesso gravado e não devem ser reprocessados.
-    Chamados 'ignorado' (sem o grupo observador) não são gravados na auditoria,
+    Chamados 'ignorado' (categoria fora do de-para) não são gravados na auditoria,
     então não entram aqui — a sondagem vai re-conferir esses IDs a cada execução.
     """
     tabela = config.tabela_auditoria
@@ -58,7 +58,7 @@ def obter_proximo_id_para_sondar(conn: ConexaoDb, config: Config) -> int:
     na lixeira) e, sem esse recuo, nunca mais seria revisitado (chamado
     #33769 ficou órfão assim). Basear o recuo em confirmações reais (em vez
     de uma quantidade fixa de IDs) faz a janela se esticar sozinha quando há
-    trechos longos de chamados 'ignorado' (fora do grupo observador) no meio
+    trechos longos de chamados 'ignorado' (categoria fora do de-para) no meio
     — que não contam como confirmação — em vez de um número fixo que pode
     ficar pequeno demais. IDs já com resultado 'sucesso' são filtrados depois
     em obter_ids_ja_processados, então reconferir não os reprocessa.

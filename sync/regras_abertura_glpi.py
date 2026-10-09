@@ -5,6 +5,8 @@ import re
 from collections.abc import Collection
 from datetime import datetime
 
+from sync.regras_negocio import GRUPO_GLPI_EMBRAS_ATENDIMENTOS
+
 # De-para inverso de regras_negocio.depara_categoria: cada mesa recebe várias
 # categorias no GLPI, então o usuário escolheu uma por mesa.
 CATEGORIA_GLPI_POR_MESA: dict[int, int] = {
@@ -21,7 +23,6 @@ CATEGORIA_GLPI_POR_MESA: dict[int, int] = {
 ENTIDADE_GLPI_STII = 1
 ORIGEM_GLPI_STI = 6
 LOCALIZACAO_GLPI_AREA_TECNICA = 1685
-GRUPO_GLPI_EMBRAS_ATENDIMENTOS = 22
 PRIORIDADE_GLPI_MEDIA = 3
 # Mesmo tipo dos chamados já sincronizados (ex.: GLPI #34900); as 4
 # categorias aceitam incidente e requisição.

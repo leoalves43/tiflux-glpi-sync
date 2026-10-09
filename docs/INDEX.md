@@ -23,6 +23,8 @@
 - `docs/plans/009-abertura-tiflux-para-glpi.md` — read with the spec above; task checklist and verified GLPI/Tiflux facts.
 - `docs/specs/010-infraestrutura-e-cliente.md` — read when touching the INFRAESTRUTURA desk mapping or the client filter on Tiflux -> GLPI.
 - `docs/plans/010-infraestrutura-e-cliente.md` — read with the spec above; task checklist.
+- `docs/specs/011-escopo-por-categoria.md` — read when changing which GLPI tickets the probe sends to Tiflux (scope = category).
+- `docs/plans/011-escopo-por-categoria.md` — read with the spec above; task checklist.
 - `docs/data/audit_tables.toon` — read when writing SQL against either audit table (column names, types, conflict keys).
 
 No other docs exist. A path not listed above does not exist — don't assume it.

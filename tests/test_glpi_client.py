@@ -322,37 +322,30 @@ class TestDefinirStatusPendente(unittest.TestCase):
         self.assertIn("400", erro)
 
 
-class TestChamadoTemGrupoObservador(unittest.TestCase):
-    def test_encontrado_como_observador(self):
+class TestAdicionarGrupoObservador(unittest.TestCase):
+    def test_grupo_ausente_e_adicionado_como_observador(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/Group_Ticket", FakeResponse(200, [{"type": 1, "groups_id": 22}]))
+        fake.programar("POST", "/Group_Ticket", FakeResponse(201, {"id": 5}))
+        with patch("sync.glpi_client.requests", fake):
+            self.assertEqual(_client(fake).adicionar_grupo_observador(1, 22), (True, None))
+        self.assertEqual(fake.chamadas[-1][2]["json"], {"input": {"tickets_id": 1, "groups_id": 22, "type": 3}})
+
+    def test_grupo_ja_observador_nao_duplica(self):
         fake = FakeRequests()
         fake.programar("GET", "/Group_Ticket", FakeResponse(200, [{"type": 3, "groups_id": 22}]))
         with patch("sync.glpi_client.requests", fake):
-            ok, motivo = _client(fake).chamado_tem_grupo_observador(1, (21, 22))
-        self.assertTrue(ok)
-        self.assertIsNone(motivo)
+            self.assertEqual(_client(fake).adicionar_grupo_observador(1, 22), (True, None))
+        self.assertEqual([c[0] for c in fake.chamadas], ["GET"])
 
-    def test_encontrado_via_outro_grupo_da_lista(self):
+    def test_falha_no_post_devolve_erro_com_grupo(self):
         fake = FakeRequests()
-        fake.programar("GET", "/Group_Ticket", FakeResponse(200, [{"type": 3, "groups_id": 21}]))
+        fake.programar("GET", "/Group_Ticket", FakeResponse(200, []))
+        fake.programar("POST", "/Group_Ticket", FakeResponse(400, text="sem permissao"))
         with patch("sync.glpi_client.requests", fake):
-            ok, motivo = _client(fake).chamado_tem_grupo_observador(1, (21, 22))
-        self.assertTrue(ok)
-        self.assertIsNone(motivo)
-
-    def test_grupo_presente_mas_nao_como_observador(self):
-        fake = FakeRequests()
-        fake.programar("GET", "/Group_Ticket", FakeResponse(200, [{"type": 1, "groups_id": 22}]))
-        with patch("sync.glpi_client.requests", fake):
-            ok, motivo = _client(fake).chamado_tem_grupo_observador(1, (21, 22))
-        self.assertFalse(ok)
-        self.assertIn("22", motivo)
-
-    def test_nenhum_grupo_da_lista_presente(self):
-        fake = FakeRequests()
-        fake.programar("GET", "/Group_Ticket", FakeResponse(200, [{"type": 3, "groups_id": 99}]))
-        with patch("sync.glpi_client.requests", fake):
-            ok, motivo = _client(fake).chamado_tem_grupo_observador(1, (21, 22))
-        self.assertFalse(ok)
+            sucesso, erro = _client(fake).adicionar_grupo_observador(1, 22)
+        self.assertFalse(sucesso)
+        self.assertIn("grupo 22", erro)
 
 
 class TestObterRequerente(unittest.TestCase):

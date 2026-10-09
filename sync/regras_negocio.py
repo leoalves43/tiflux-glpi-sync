@@ -14,6 +14,10 @@ PRIORIDADE_POR_MESA = {
     38853: 123346,  # INFRAESTRUTURA     -> Solicitar um Atendimento (spec 010)
 }
 
+# Grupo "EMBRAS - Atendimentos" do GLPI: observador de todo chamado da
+# integração, nos dois sentidos (specs 009 e 011).
+GRUPO_GLPI_EMBRAS_ATENDIMENTOS = 22
+
 # Textos de SLA do contrato, agrupados em 3 faixas sobre a escala de 6 níveis do GLPI.
 _SLA_PRIORIDADE_BAIXA = (
     "Tempo para conclusão não é requerido e o trabalho normal pode continuar.\n"

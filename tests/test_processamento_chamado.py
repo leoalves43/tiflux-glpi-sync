@@ -23,22 +23,36 @@ class TestProcessarChamado(unittest.TestCase):
         self.glpi = FakeGlpiClient()
         self.tiflux = FakeTifluxClient()
 
-    def test_ignorado_quando_fora_do_grupo_observador(self):
-        self.glpi.grupo_observador[1] = (False, "sem grupo")
-        status, numero, msg = processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
-        self.assertEqual((status, numero, msg), ("ignorado", None, "sem grupo"))
+    def test_ignorado_quando_categoria_fora_do_depara(self):
+        # Spec 011, AC 2: o grupo observador não importa mais.
+        for categoria in (999, None):
+            self.glpi.tickets[1] = {**_TICKET_ARRECADACAO, "itilcategories_id": categoria}
+            status, numero, msg = processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
+            self.assertEqual((status, numero), ("ignorado", None))
+            self.assertIn(f"Categoria GLPI {categoria} fora do de-para", msg)
+        self.assertEqual(self.tiflux.tickets_criados, [])
+
+    def test_categoria_do_depara_sem_grupo_cria_e_poe_o_grupo_22(self):
+        # Spec 011, AC 1 e 3.
+        self.glpi.tickets[1] = _TICKET_ARRECADACAO
+        status, numero, _ = processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
+        self.assertEqual((status, numero), ("sucesso", "T-1"))
+        self.assertEqual(self.glpi.grupos_observadores_adicionados, [(1, 22)])
+        self.assertEqual(self.glpi.tecnicos_atribuidos_glpi, [(1, 4988)])
+
+    def test_falha_ao_por_grupo_so_avisa(self):
+        # Spec 011, AC 4.
+        self.glpi.tickets[1] = _TICKET_ARRECADACAO
+        self.glpi.resultado_adicionar_grupo_observador = (False, "boom")
+        status, _, msg = processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
+        self.assertEqual(status, "sucesso")
+        self.assertIn("falha ao pôr o grupo observador", msg)
 
     def test_erro_quando_chamado_nao_existe_no_glpi(self):
         status, numero, msg = processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
         self.assertEqual(status, "erro")
         self.assertIsNone(numero)
         self.assertIn("não encontrado", msg)
-
-    def test_erro_quando_categoria_sem_mesa_correspondente(self):
-        self.glpi.tickets[1] = {**_TICKET_ARRECADACAO, "itilcategories_id": 999}
-        status, numero, msg = processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
-        self.assertEqual(status, "erro")
-        self.assertIn("Categoria GLPI 999", msg)
 
     def test_erro_quando_mesa_nao_pertence_ao_cliente(self):
         self.glpi.tickets[1] = _TICKET_ARRECADACAO
