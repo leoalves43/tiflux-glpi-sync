@@ -12,6 +12,7 @@ from sync.regras_negocio import (
     GRUPO_GLPI_EMBRAS_ATENDIMENTOS,
     cabecalho_prioridade_glpi,
     definir_autor_glpi,
+    definir_estagio_inicial,
     definir_prioridade,
     definir_tecnico,
     depara_categoria,
@@ -79,7 +80,8 @@ def _processar(glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_chamad
     ticket_number_tiflux = _criar_ticket(tiflux, planejado.form_data)
     if planejado.id_tecnico is not None:
         _atribuir_tecnico(tiflux, ticket_number_tiflux, planejado.id_tecnico, planejado.nome_tecnico)
-    avisos = _completar_apos_criacao(glpi, tiflux, config, id_chamado, ticket, ticket_number_tiflux)
+    avisos = _mover_para_estagio_inicial(tiflux, ticket_number_tiflux, planejado.mesa)
+    avisos += _completar_apos_criacao(glpi, tiflux, config, id_chamado, ticket, ticket_number_tiflux)
     return "sucesso", ticket_number_tiflux, _mensagem_criacao(planejado, ticket_number_tiflux, avisos)
 
 
@@ -227,6 +229,21 @@ def _atribuir_tecnico(
         msg = (f"Ticket #{ticket_number_tiflux} criado, mas falhou ao atribuir técnico "
                f"{nome_tecnico_tiflux} ({status_code}): {texto_resposta}")
         raise _ChamadoNaoSincronizavel("erro", msg, numero_tiflux=ticket_number_tiflux)
+
+
+def _mover_para_estagio_inicial(tiflux: TifluxClient, ticket_number_tiflux: str, mesa_tiflux: int) -> str:
+    """
+    Depois do técnico, a mesa pode pedir outro estágio (spec 012: ARRECADAÇÃO ->
+    Em Atendimento - Residentes). Falha só avisa: o ticket já existe no Tiflux.
+    """
+    id_estagio = definir_estagio_inicial(mesa_tiflux)
+    if id_estagio is None:
+        return ""
+    erro = tiflux.mover_para_estagio(ticket_number_tiflux, id_estagio)
+    if erro is None:
+        return ""
+    log(f"⚠️ Ticket #{ticket_number_tiflux} criado, mas falhou ao mover de estágio: {erro}")
+    return " | Aviso: falha ao mover de estágio no Tiflux"
 
 
 def _atualizar_titulo_glpi(glpi: GlpiClient, id_chamado: int, titulo_original: str, ticket_number_tiflux: str) -> str:

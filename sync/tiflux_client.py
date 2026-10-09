@@ -360,6 +360,19 @@ class TifluxClient:
             return None
         return f"Falha ao renomear ticket #{ticket_number} no Tiflux para {titulo!r} ({resp.status_code}): {resp.text}"
 
+    def mover_para_estagio(self, ticket_number: NumeroTiflux, id_estagio: int) -> str | None:
+        """
+        PUT /tickets/{n} só com `stage_id` (spec 012). Devolve o erro, ou None se moveu.
+        Ex.: tiflux.mover_para_estagio(364990, 233286) -> None
+        """
+        resp = self._session.put(
+            f"{self._url_base}/tickets/{ticket_number}", json={"stage_id": id_estagio},
+            headers=self._headers_json, timeout=self._timeout,
+        )
+        if resp.status_code == 200:
+            return None
+        return f"Falha ao mover ticket #{ticket_number} para o estágio {id_estagio} ({resp.status_code}): {resp.text}"
+
     def listar_arquivos_ticket(self, ticket_number: NumeroTiflux, tamanho_pagina: int, max_paginas: int) -> list[dict]:
         """GET /tickets/{n}/files: [{"id", "file_name", "content_type", "size", "url" (S3 pré-assinada)}]."""
         return self._listar_paginado("files", ticket_number, tamanho_pagina, max_paginas)

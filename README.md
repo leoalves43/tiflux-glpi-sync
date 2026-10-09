@@ -43,7 +43,9 @@ Cada execução (no Docker, 2 minutos depois do fim da anterior) tem três etapa
   GLPI e o texto de SLA correspondente vão no topo da descrição.
 - **Solicitante** achado (ou cadastrado) no Tiflux pelo e-mail do requerente,
   com o telefone do campo "Telefone / Linhas" do chamado.
-- **Técnico** no Tiflux: Léo Alves só na mesa ARRECADAÇÃO; nas demais, sem técnico.
+- **Técnico e estágio** no Tiflux: na mesa ARRECADAÇÃO o ticket já vai para o
+  técnico Leonardo Silva e para o estágio "Em Atendimento - Residentes"; nas
+  demais mesas fica sem técnico, no estágio inicial.
 - Campo obrigatório "Módulo utilizado" sempre "Padrão". Anexos do chamado vão junto.
 - Título no Tiflux: `<titulo> (<id_glpi>)`. Título no GLPI ganha `#<numero_tiflux> - `.
 - No GLPI, o técnico atribuído passa a ser Suporte Embras (exigência do GLPI

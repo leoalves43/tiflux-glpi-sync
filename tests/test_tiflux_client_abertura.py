@@ -27,6 +27,19 @@ class TestRenomearTicket(unittest.TestCase):
         self.assertIn("422", erro)
 
 
+class TestMoverParaEstagio(unittest.TestCase):
+    def test_sucesso_manda_so_o_estagio(self):
+        fake = FakeRequests()
+        fake.programar("PUT", "/tickets/364990", FakeResponse(200, {"ticket_number": 364990}))
+        self.assertIsNone(_client(fake).mover_para_estagio(364990, 233286))
+        self.assertEqual(fake.chamadas[-1][2]["json"], {"stage_id": 233286})
+
+    def test_falha_devolve_erro_com_estagio(self):
+        fake = FakeRequests()
+        fake.programar("PUT", "/tickets/364990", FakeResponse(422, text="invalid stage"))
+        self.assertIn("estágio 233286 (422)", _client(fake).mover_para_estagio(364990, 233286))
+
+
 class TestArquivosTicket(unittest.TestCase):
     def test_lista_arquivos_paginando(self):
         fake = FakeRequests()

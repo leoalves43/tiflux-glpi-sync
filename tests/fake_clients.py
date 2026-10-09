@@ -153,6 +153,8 @@ class FakeTifluxClient:
         # Abertura Tiflux -> GLPI (spec 009): GET por número tem prioridade sobre ticket_tiflux.
         self.tickets_por_numero: dict[int, dict] = {}
         self.renomeados: list[tuple[int, str]] = []
+        self.estagios_movidos: list[tuple[str, int]] = []
+        self.erro_ao_mover_estagio: str | None = None
         self.erro_ao_renomear: str | None = None
         self.arquivos_ticket: list[dict] = []
         self.conteudos_por_url: dict[str, bytes] = {}
@@ -165,6 +167,10 @@ class FakeTifluxClient:
             ticket = self.tickets_por_numero.get(int(ticket_number))
             return ticket, (200 if ticket is not None else 404)
         return self.ticket_tiflux, (200 if self.ticket_tiflux is not None else 404)
+
+    def mover_para_estagio(self, ticket_number, id_estagio):
+        self.estagios_movidos.append((ticket_number, id_estagio))
+        return self.erro_ao_mover_estagio
 
     def renomear_ticket(self, ticket_number, titulo):
         self.renomeados.append((ticket_number, titulo))
@@ -244,7 +250,7 @@ class FakeTifluxClientContador(FakeTifluxClient):
         "obter_ticket", "listar_tickets_atualizados_desde", "listar_tickets_abertos", "listar_respostas",
         "listar_comunicacoes_internas", "publicar_resposta_cliente", "publicar_comunicacao_interna",
         "reabrir_ticket", "atribuir_tecnico", "enviar_anexos",
-        "renomear_ticket", "listar_arquivos_ticket", "baixar_arquivo",
+        "renomear_ticket", "listar_arquivos_ticket", "baixar_arquivo", "mover_para_estagio",
     })
 
     def __init__(self):

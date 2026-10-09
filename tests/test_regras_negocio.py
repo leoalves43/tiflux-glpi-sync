@@ -4,6 +4,7 @@ from sync.config import Config
 from sync.regras_negocio import (
     cabecalho_prioridade_glpi,
     definir_autor_glpi,
+    definir_estagio_inicial,
     definir_prioridade,
     definir_tecnico,
     depara_categoria,
@@ -38,6 +39,11 @@ class TestDeparaCategoria(unittest.TestCase):
     def test_limites_suprimentos(self):
         self.assertEqual(depara_categoria(282), 37966)
         self.assertEqual(depara_categoria(286), 37966)
+
+    def test_estagio_inicial_so_na_arrecadacao(self):
+        # Spec 012.
+        self.assertEqual(definir_estagio_inicial(37964), 233286)
+        self.assertIsNone(definir_estagio_inicial(37965))
 
     def test_categoria_348_e_infraestrutura(self):
         # Spec 010.

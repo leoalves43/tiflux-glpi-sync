@@ -14,6 +14,12 @@ PRIORIDADE_POR_MESA = {
     38853: 123346,  # INFRAESTRUTURA     -> Solicitar um Atendimento (spec 010)
 }
 
+# Estágio em que o ticket criado pela integração já entra, por mesa (spec 012).
+# Mesa fora daqui fica no estágio inicial do Tiflux.
+ESTAGIO_INICIAL_POR_MESA = {
+    37964: 233286,  # ARRECADAÇÃO -> Em Atendimento - Residentes
+}
+
 # Grupo "EMBRAS - Atendimentos" do GLPI: observador de todo chamado da
 # integração, nos dois sentidos (specs 009 e 011).
 GRUPO_GLPI_EMBRAS_ATENDIMENTOS = 22
@@ -133,3 +139,11 @@ def numero_tiflux_no_titulo(titulo_glpi: str | None) -> str | None:
     """
     match = _REGEX_TITULO_PREFIXADO_TIFLUX.match((titulo_glpi or "").strip())
     return match.group(1) if match else None
+
+
+def definir_estagio_inicial(id_mesa: int) -> int | None:
+    """
+    Estágio do Tiflux para o ticket recém-criado, ou None (fica no inicial).
+    Ex.: definir_estagio_inicial(37964) -> 233286
+    """
+    return ESTAGIO_INICIAL_POR_MESA.get(id_mesa)

@@ -141,6 +141,27 @@ class TestProcessarChamado(unittest.TestCase):
         processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
         self.assertEqual(self.glpi.tecnicos_atribuidos_glpi, [(1, _CONFIG.id_glpi_leo)])
 
+    def test_arrecadacao_vai_para_em_atendimento_residentes(self):
+        # Spec 012, AC 1: técnico e depois o estágio.
+        self.glpi.tickets[1] = _TICKET_ARRECADACAO
+        processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
+        self.assertEqual(self.tiflux.tecnicos_atribuidos, [("T-1", _CONFIG.id_tecnico_leo)])
+        self.assertEqual(self.tiflux.estagios_movidos, [("T-1", 233286)])
+
+    def test_outras_mesas_nao_mudam_de_estagio(self):
+        # Spec 012, AC 2.
+        self.glpi.tickets[1] = _TICKET_FINANCAS
+        processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
+        self.assertEqual(self.tiflux.estagios_movidos, [])
+
+    def test_falha_ao_mover_estagio_so_avisa(self):
+        # Spec 012, AC 3.
+        self.glpi.tickets[1] = _TICKET_ARRECADACAO
+        self.tiflux.erro_ao_mover_estagio = "Falha (422)"
+        status, numero, msg = processar_chamado(self.glpi, self.tiflux, _CONFIG, 1)
+        self.assertEqual((status, numero), ("sucesso", "T-1"))
+        self.assertIn("falha ao mover de estágio", msg)
+
     def test_categoria_348_cria_na_infraestrutura_sem_tecnico(self):
         # Spec 010, AC 2.
         self.glpi.tickets[1] = {**_TICKET_ARRECADACAO, "itilcategories_id": 348}
