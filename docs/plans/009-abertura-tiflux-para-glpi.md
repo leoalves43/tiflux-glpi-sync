@@ -87,11 +87,12 @@ chamadas novas vão para módulos novos.
   panorama_tiflux, main, testes. Done: testes de AC 1-6, 8-11, 14.
 - [x] 8. Backfill `python -m sync.pendente_retroativo [--aplicar]`. Done:
   dry run lista chamados; teste.
-- [ ] 9. Verificação ao vivo (com OK do usuário): dry run num ticket real;
+- [x] 9. Verificação ao vivo (com OK do usuário): dry run num ticket real;
   container parado; 1ª escrita isolada via CLI `--aplicar` + GET dos
   sub-itens no GLPI; depois ciclo completo (escreve em produção). Followup
   GLPI -> Tiflux de teste com conta != 4988 (anti-eco ignora 4988).
   Backfill só DEPOIS do deploy: `main` volta chamados para Novo.
   Done: AC 1-14 conferidos. Feito 2026-10-09: AC 1-3, 5, 7, 10-12 ao vivo;
-  AC 9 e 13 pendentes (13 só após o deploy).
+  AC 13 e 14 após o deploy (retroativo: 3 chamados; ocioso: 5 req). AC 9
+  só nos testes automatizados.
 - [x] 10. Docs: ARCHITECTURE, README, LOG, HANDOFF.
