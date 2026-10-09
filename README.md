@@ -1,7 +1,8 @@
 # tiflux-glpi-sync
 
 Integração entre o **GLPI** da Prefeitura de Caraguatatuba e o **Tiflux** da
-EMBRAS: chamados, respostas e status são espelhados nos dois sistemas, com
+EMBRAS: chamado aberto em qualquer um dos dois sistemas é criado no outro, e
+respostas, encerramento e reabertura são espelhados nos dois sentidos, com
 auditoria em Postgres. Antes de mexer no código, leia `docs/INDEX.md` e
 `docs/ARCHITECTURE.md`.
 
@@ -87,8 +88,9 @@ de chamado novo do GLPI.
   - resposta pública do Tiflux vira acompanhamento no GLPI, com o nome de quem
     respondeu e a data, e o chamado fica Pendente.
   - Comentários privados e comunicações internas não cruzam.
-  Acompanhamentos escritos no GLPI pela conta Suporte Embras não vão para o
-  Tiflux: é a conta da própria integração (evita eco).
+  Acompanhamentos escritos no GLPI pela conta Suporte Embras (4988) não vão
+  para o Tiflux: é a conta da própria integração (evita eco). O mesmo vale
+  para a conta antiga da Sânia (4816), usada pela integração no passado.
 - **Encerramento em cascata:** ticket fechado ou cancelado no Tiflux deixa o
   chamado **Solucionado** no GLPI, com a última resposta pública do técnico
   como solução.
@@ -188,6 +190,7 @@ nada se já houver uma execução em andamento):
 | Linha | Significado |
 |---|---|
 | `✅ Chamado #N: Ticket #M criado no Tiflux ...` | chamado do GLPI criado no Tiflux |
+| `Finalizado. Sucesso: N \| Ignorado: N \| Erro: N` | resultado da sondagem do GLPI; ignorado = categoria fora do de-para |
 | `🆕 N ticket(s) do Tiflux para abrir no GLPI` / `✅ Ticket Tiflux #M aberto no GLPI como chamado #N` | abertura Tiflux -> GLPI |
 | `🔁 N chamado(s) com encerramento/reabertura recente no Tiflux` | cascata desta execução |
 | `Followups. GLPI->Tiflux: ... \| Tiflux->GLPI: ... \| Encerramento/reabertura ...` | placar de respostas e cascatas |
@@ -222,6 +225,8 @@ na raiz do projeto.
 
 Cria no Tiflux (ou vincula, se já houver ticket com `(<id_glpi>)` no título) e
 sincroniza as respostas. Nunca recria um chamado que já tem ticket no Tiflux.
+Segue as mesmas regras do ciclo: a categoria precisa estar no de-para. Útil
+quando a categoria foi corrigida depois que o chamado saiu da faixa da sondagem.
 A interface web lê a última linha da saída como JSON
 (`{"status", "numero_tiflux", "mensagem"}`).
 
