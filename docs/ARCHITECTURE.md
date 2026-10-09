@@ -1,35 +1,33 @@
 # Architecture
 
-Package `sync/`, entrypoint `glpi_tiflux.py` (10-line shim calling `sync.main.main`
-— keep this filename; the scheduler invokes it directly). No framework. Scheduled
-by the Docker container `tiflux-glpi-sync` (`docker/loop_sincronizacao.sh`: run,
-then sleep `INTERVALO_SEGUNDOS`, default 120s — never overlaps); manual: `python glpi_tiflux.py`. Env vars
-override `.env` keys (`Config.carregar`); DB is remote Postgres (`DB_HOST` in `.env`, no compose override). Split into modules 2026-09-08 (see
-decisions/LOG.md); each file stays under the 500-line guideline.
+Package `sync/`, entrypoint `glpi_tiflux.py` (shim for `sync.main.main` — keep the name, the
+scheduler calls it). Docker container `tiflux-glpi-sync` (`docker/loop_sincronizacao.sh`: run, sleep
+`INTERVALO_SEGUNDOS`=120, never overlaps); manual: `python glpi_tiflux.py`. Env vars override `.env`
+(`Config.carregar`); DB is remote Postgres. Every file stays under 500 lines.
 
 ## Data flow
 
 ```
 GLPI (REST, session-token auth)  <-->  sync/*.py  <-->  Tiflux (REST, bearer auth)
-                                            |
-                                            v
-                                  Postgres (2 audit tables)
+                                            v  Postgres (2 audit tables)
 ```
 
-Two independent sync passes per run, both driven from `sync/main.py:main()`:
+Three sync passes per run, all driven from `sync/main.py:main()`:
 
-1. **Ticket creation, GLPI -> Tiflux only.** `GlpiClient.buscar_chamados_desde()`
-   (sync/glpi_client.py) probes `GET /Ticket/{id}` sequentially (this GLPI
-   install's `/search/Ticket` is unreliable — do not use it).
-   `processar_chamado()` (sync/processamento_chamado.py) first checks
-   `TifluxClient.buscar_ticket_por_chamado_glpi()` for an already-existing
-   Tiflux ticket (title `"<titulo> (<id_glpi>)"`, e.g. one opened manually
-   during a GLPI token outage) — if found, links it instead of creating a
-   duplicate. Otherwise translates and creates the ticket in Tiflux, assigns a
-   technician, uploads attachments.
-2. **Followup sync, bidirectional, for already-synced open tickets.** `main()` reads a
+1. **Ticket creation, GLPI -> Tiflux.** `GlpiClient.buscar_chamados_desde()` probes
+   `GET /Ticket/{id}` (`/search/Ticket` is unreliable here — don't use it).
+   `processar_chamado()` links an existing Tiflux ticket titled `"<titulo> (<id_glpi>)"`
+   instead of duplicating, refuses GLPI titles already prefixed `#<n> - `, else
+   creates the Tiflux ticket, assigns a technician, uploads attachments.
+2. **Ticket creation, Tiflux -> GLPI (spec 009, off unless `ABERTURA_TIFLUX_DESDE`).**
+   `abrir_chamados_do_tiflux()` (sync/abertura_tiflux_para_glpi.py) picks candidates from
+   the panorama's listed tickets (0 extra requests) + `erro` retries; per ticket: GET,
+   intent row `pendente`, POST /Ticket via `GlpiAberturaClient`, `api_glpi_tiflux`
+   `sucesso` at once, then rename Tiflux `(<id_glpi>)`, phone, files, Pendente.
+   Idempotency/echo rules: decisions/LOG.md 2026-10-09.
+3. **Followup sync, bidirectional, for already-synced open tickets.** `main()` reads a
    `PanoramaTiflux` (sync/panorama_tiflux.py, spec 008): open tickets + tickets updated
-   since the checkpoint (2 listings); any failure -> `None`, followups skipped. Then
+   since the checkpoint (2 listings); any failure -> `None`, creation and followups skipped. Then
    `sincronizar_followups()` takes state changes + safety sweep + the rotation (every
    GLPI open/Solucionado `sucesso` ticket, 50 GLPI-Fechado). Per ticket,
    `conferir_por_completo()` picks the full path (`GET /tickets/{n}`, all writes) or
@@ -38,11 +36,9 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
      Tiflux `/client-answers`, always with the GLPI author's name (public only).
    - `sincronizar_followups_tiflux_para_glpi()` — Tiflux answers/internal
      communications -> GLPI `ITILFollowup`.
-   Cascade status sync is otherwise Tiflux -> GLPI only, with one exception:
-   if a chamado this integration cascade-closed (GLPI Solucionado) comes back
-   open in GLPI while Tiflux is still closed (solution refused, or reopened
-   manually), `reabrir_tiflux_apos_recusa_glpi()` reopens the Tiflux ticket; if
-   that fails (403), GLPI stays open and it retries every run (spec 004).
+   Cascade is Tiflux -> GLPI, except: a cascade-closed chamado reopened in GLPI while
+   Tiflux is closed -> `reabrir_tiflux_apos_recusa_glpi()` reopens Tiflux (retries each run, spec 004).
+   Every GLPI ticket the integration creates, reopens or answers ends Pendente (4).
 
 ## Modules
 
@@ -56,6 +52,8 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
 | `sync/limite_requisicoes_tiflux.py` | `SessaoTifluxLimitada` — session used by `TifluxClient.conectar`; waits on `RateLimit-*` headers, retries 429 (spec 007) |
 | `sync/html_texto.py` | `html_para_texto_plano()` — GLPI HTML description -> Tiflux plain text |
 | `sync/regras_negocio.py` | category->desk mapping, technician/priority lookup, requester-is-author check |
+| `sync/abertura_tiflux_para_glpi.py` | spec 009 orchestrator; rules in `regras_abertura_glpi`, intent rows in `db_abertura_tiflux`, files in `anexos_tiflux_para_glpi` |
+| `sync/glpi_abertura_client.py` | `GlpiAberturaClient` (via `GlpiClient.cliente_abertura()`): user by e-mail, POST /Ticket, phone, /Document |
 | `sync/processamento_chamado.py` | `processar_chamado()` — creates one ticket end to end |
 | `sync/sincronizacao_followups.py` | orchestrator: picks tickets, runs publish + cascade per ticket, `PlacarFollowups` log line |
 | `sync/publicacao_followups.py` | the two directional followup publishers (GLPI->Tiflux, Tiflux->GLPI) |
@@ -64,6 +62,8 @@ Two independent sync passes per run, both driven from `sync/main.py:main()`:
 | `sync/panorama_tiflux.py` | `PanoramaTiflux`: the 2 listings per run, checkpoint window, safety-sweep pairs (spec 008) |
 | `sync/main.py` | `main()` — wiring, candidate selection, top-level logging |
 | `sync/forcar_sincronizacao.py` | `python -m sync.forcar_sincronizacao --id-glpi N` — manual backup for one ticket skipped by the cron; see below |
+| `sync/abrir_ticket_tiflux_no_glpi.py` | `python -m sync.abrir_ticket_tiflux_no_glpi --numero-tiflux N [--aplicar]` — one ticket, dry run by default |
+| `sync/pendente_retroativo.py` | one-off: synced Novo tickets -> Pendente (after deploy only) |
 | `sync/encerrar_legado.py` | `python -m sync.encerrar_legado --id-glpi N --numero-tiflux M` — one-off GLPI close for tickets opened by hand in Tiflux pre-integration; never writes `api_glpi_tiflux` (spec 002) |
 
 Clients built once per run in `main()`, passed as parameters; `TifluxClient` caches desks.
@@ -72,7 +72,7 @@ Clients built once per run in `main()`, passed as parameters; `TifluxClient` cac
 
 Full DDL and column reference: `docs/data/audit_tables.toon`. Summary:
 
-- `api_glpi_tiflux` — one row per GLPI ticket (`id_glpi` unique), creation only.
+- `api_glpi_tiflux` — one row per GLPI ticket (`id_glpi` unique), creation only (both directions).
 - `api_glpi_tiflux_followups` — one row per followup/answer, conflict key
   `(direcao, id_origem)`. Tracks both sync directions and doubles as the
   echo-prevention mechanism (see decisions/LOG.md).
@@ -87,10 +87,9 @@ Full DDL and column reference: `docs/data/audit_tables.toon`. Summary:
 
 ## Manual force-sync entrypoint
 
-`sync/forcar_sincronizacao.py`, run by hand (README). Reuses `processar_chamado` and both followup functions; no cascade.
-`decidir_acao()` never calls `processar_chamado` when `numero_tiflux IS NOT NULL`
-(even on `status='erro'`, see bug below). Its `pg_try_advisory_lock` only blocks
-two forced runs on the same ticket, not the container loop.
+`sync/forcar_sincronizacao.py` (README): `processar_chamado` + both followup functions, no
+cascade; never creates when `numero_tiflux IS NOT NULL` (even `erro`, bug below). Its
+advisory lock blocks two forced runs on one ticket, not the container loop.
 
 ## Known pre-existing bug (not fixed, tracked)
 

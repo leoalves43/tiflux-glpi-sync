@@ -5,7 +5,7 @@ auditoria em Postgres. Antes de mexer na lógica, leia `docs/ARCHITECTURE.md`.
 
 ## O que a sincronização faz
 
-A cada execução (no Docker, a cada 5 minutos):
+A cada execução (no Docker, 2 minutos depois do fim da anterior):
 
 1. **Criação de chamados, GLPI -> Tiflux.** Sonda os chamados novos do GLPI
    (só os que têm um dos grupos observadores EMBRAS) e cria o equivalente no
@@ -23,6 +23,13 @@ A cada execução (no Docker, a cada 5 minutos):
    Solucionado no GLPI, com a última resposta pública do técnico como solução.
    Ticket reaberto no Tiflux -> chamado reaberto no GLPI. Solução recusada no
    GLPI -> ticket reaberto no Tiflux.
+6. **Criação de chamados, Tiflux -> GLPI** (spec 009, liga com
+   `ABERTURA_TIFLUX_DESDE`). Ticket novo no Tiflux numa das 4 mesas do contrato
+   vira chamado no GLPI (entidade STII, categoria pela mesa, requerente pelo
+   e-mail, observador EMBRAS - Atendimentos, telefone, anexos) e o ticket ganha
+   `(<id_glpi>)` no título. Daí em diante segue os passos 4 e 5.
+7. **Status Pendente.** Todo chamado que a integração cria, reabre ou responde
+   no GLPI fica Pendente.
 
 O estado fica em duas tabelas Postgres (uma por chamado, uma por followup),
 que também evitam o eco entre as duas direções.
@@ -123,6 +130,23 @@ acompanhado. Irreversível pela API: confira os títulos impressos no resultado.
 
 ```bash
 python -m sync.encerrar_legado --id-glpi 33545 --numero-tiflux 361210
+```
+
+**Abrir no GLPI um ticket do Tiflux** (spec 009), pelo mesmo caminho do ciclo.
+Sem `--aplicar` só mostra o que seria enviado. Uma abertura que ficou
+`pendente` em `api_glpi_tiflux_followups` (`direcao='abertura_tiflux'`) tem
+resultado desconhecido e não é retentada: confira no GLPI e ajuste a linha
+(`sucesso` com o id, ou apague-a para retentar).
+
+```bash
+python -m sync.abrir_ticket_tiflux_no_glpi --numero-tiflux 364990 [--aplicar]
+```
+
+**Passar para Pendente os chamados que ficaram Novo** (uso único, spec 009).
+Rode só com o container já na versão com Pendente; sem `--aplicar` só lista:
+
+```bash
+python -m sync.pendente_retroativo [--aplicar]
 ```
 
 **Vincular um ticket aberto à mão para continuar sincronizando.**
