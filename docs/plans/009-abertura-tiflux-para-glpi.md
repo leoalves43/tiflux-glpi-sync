@@ -85,7 +85,7 @@ chamadas novas vão para módulos novos.
   `python -m sync.abrir_ticket_tiflux_no_glpi --numero-tiflux N [--aplicar]`
   (sem `--aplicar` só imprime o payload). Files: abertura_tiflux_para_glpi,
   panorama_tiflux, main, testes. Done: testes de AC 1-6, 8-11, 14.
-- [ ] 8. Backfill `python -m sync.pendente_retroativo [--aplicar]`. Done:
+- [x] 8. Backfill `python -m sync.pendente_retroativo [--aplicar]`. Done:
   dry run lista chamados; teste.
 - [ ] 9. Verificação ao vivo (com OK do usuário): dry run num ticket real;
   ticket de teste no Tiflux -> GLPI; resposta nos 2 sentidos; encerrar;
