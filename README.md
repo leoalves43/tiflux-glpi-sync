@@ -33,6 +33,7 @@ Cada execução (no Docker, 2 minutos depois do fim da anterior) tem três etapa
   | 272–276 | ARRECADAÇÃO |
   | 277–281 | FINANÇAS |
   | 282–286 | SUPRIMENTOS |
+  | 348 | INFRAESTRUTURA |
 
   Categoria fora da tabela fica como erro para revisão manual.
 - **Prioridade** fixa por mesa ("Solicitar um Atendimento"). A prioridade do
@@ -50,19 +51,20 @@ Cada execução (no Docker, 2 minutos depois do fim da anterior) tem três etapa
 
 ### 2. Ticket aberto no Tiflux vira chamado no GLPI
 
-Ligado só com `ABERTURA_TIFLUX_DESDE` preenchido; considera apenas tickets
-abertos a partir dessa data, numa das 4 mesas do contrato. Tickets de outras
-mesas (INFRAESTRUTURA etc.) e tickets que já têm par não são abertos.
+Ligado só com `ABERTURA_TIFLUX_DESDE` preenchido; considera apenas tickets do
+cliente SP-CARAGUATATUBA-PM abertos a partir dessa data, numa das 5 mesas do
+contrato. Tickets de outros clientes, de outras mesas (DEVOPS etc.) e tickets
+que já têm par não são abertos.
 
 | Campo no GLPI | Valor |
 |---|---|
 | Título | `#<numero_tiflux> - <titulo>` |
 | Entidade | STII |
-| Categoria | ADMINISTRATIVO/RH 267 · ARRECADAÇÃO 272 · FINANÇAS 277 · SUPRIMENTOS 282 |
+| Categoria | ADMINISTRATIVO/RH 267 · ARRECADAÇÃO 272 · FINANÇAS 277 · SUPRIMENTOS 282 · INFRAESTRUTURA 348 |
 | Origem da requisição | STI |
 | Localização | STI Área Técnica |
 | Prioridade | Média |
-| Requerente | usuário do GLPI com o e-mail do solicitante; se não houver, Suporte Embras |
+| Requerente | usuário ativo do GLPI com o e-mail do solicitante; se não houver (ou estiver inativo), Suporte Embras |
 | Observador | grupo Embras - Atendimentos |
 | Técnico | Suporte Embras |
 | Telefone (plugin) | telefone do solicitante no Tiflux; se vazio, `1238971100` |
@@ -231,11 +233,15 @@ esteja processando no mesmo minuto.
 
 Mesmo caminho e mesmas proteções da etapa 2. Sem `--aplicar` só lê e mostra se
 o ticket é candidato e o que seria enviado ao GLPI; com `--aplicar`, abre.
-Exige `ABERTURA_TIFLUX_DESDE` preenchido.
+Exige `ABERTURA_TIFLUX_DESDE` preenchido. `--ignorar-corte` aceita um ticket
+aberto antes da data de corte (usado em 09/10/2026 para #364799 e #364496);
+as demais regras continuam valendo. As respostas públicas já existentes chegam
+ao GLPI nos ciclos seguintes, sem voltar ao Tiflux.
 
 ```bash
 python -m sync.abrir_ticket_tiflux_no_glpi --numero-tiflux 364990
 python -m sync.abrir_ticket_tiflux_no_glpi --numero-tiflux 364990 --aplicar
+python -m sync.abrir_ticket_tiflux_no_glpi --numero-tiflux 364496 --ignorar-corte --aplicar
 ```
 
 ### Encerrar no GLPI um chamado atendido por ticket aberto à mão no Tiflux

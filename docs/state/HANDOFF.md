@@ -1,10 +1,12 @@
 # Handoff
 
-DONE (2026-10-09), spec 009 merged to main and deployed (container rebuilt 14:42), 443 tests green:
-- Live (cutoff ABERTURA_TIFLUX_DESDE=2026-10-09T17:25:00Z in .env): Tiflux #364984 -> GLPI #35009
-  (entity 1, loc 1685, cat 272, Pendente, png copied); answers both ways; close -> Solucionado;
-  API reopen -> Pendente. GLPI #35007 = first test, Solucionado and unlinked by hand.
+DONE (2026-10-09), specs 009 + 010 on main and deployed, 451 tests green:
+- 009 live (cutoff 2026-10-09T17:25:00Z in .env): Tiflux #364984 -> GLPI #35009; answers both ways,
+  close, reopen ok. GLPI #35007 = first test, Solucionado and unlinked by hand.
 - Backfill applied: GLPI 34982, 34986, 34990 Novo -> Pendente; 0 Novo left. Idle run: 5 Tiflux req.
+
+- Spec 010 deployed 16:12: INFRAESTRUTURA 38853 <-> cat 348 both ways; only client 762707 to GLPI;
+  inactive requester -> 4988; #364799 -> GLPI #35018, #364496 -> #35019 (answers in, no echo).
 
 NEXT:
 1. Watch first real Tiflux-opened tickets (log line "🆕"). Close test GLPI #35009 / Tiflux #364984.

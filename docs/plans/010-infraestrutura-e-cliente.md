@@ -19,5 +19,7 @@ testes correspondentes, `README.md`, `docs/decisions/LOG.md`, HANDOFF.
 - [x] 1. De-para nos dois sentidos + prioridade da mesa 38853. Done: testes.
 - [x] 2. Filtro de cliente no candidato à abertura. Done: teste AC 3.
 - [x] 3. `--ignorar-corte` no CLI. Done: teste AC 4.
-- [ ] 4. Deploy, importar os 2 tickets, conferir respostas e eco. Done: AC 5.
-- [ ] 5. README, LOG, HANDOFF.
+- [x] 4. Deploy, importar os 2 tickets, conferir respostas e eco. Done: AC 5.
+  Feito: #364799 -> GLPI #35018, #364496 -> #35019 (2 respostas, sem eco).
+  Extra pedido no caminho: requerente inativo no GLPI -> 4988.
+- [x] 5. README, LOG, HANDOFF.
