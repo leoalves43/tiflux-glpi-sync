@@ -4,6 +4,7 @@ sem depender de HTTP real."""
 
 from datetime import datetime, timezone
 
+from sync.glpi_abertura_client import ResultadoCriacaoGlpi
 from sync.panorama_tiflux import PanoramaTiflux
 
 
@@ -140,12 +141,31 @@ class FakeTifluxClient:
         # Simula listar_respostas com falha: devolve [] e conta, como o cliente real.
         self.falhar_listagem_respostas = False
         self.requisicoes_enviadas = 0
+        # Abertura Tiflux -> GLPI (spec 009): GET por número tem prioridade sobre ticket_tiflux.
+        self.tickets_por_numero: dict[int, dict] = {}
+        self.renomeados: list[tuple[int, str]] = []
+        self.erro_ao_renomear: str | None = None
+        self.arquivos_ticket: list[dict] = []
+        self.conteudos_por_url: dict[str, bytes] = {}
 
     def validar_mesa_do_cliente(self, id_mesa):
         return True if self.mesas_validas is None else id_mesa in self.mesas_validas
 
     def obter_ticket(self, ticket_number):
+        if self.tickets_por_numero:
+            ticket = self.tickets_por_numero.get(int(ticket_number))
+            return ticket, (200 if ticket is not None else 404)
         return self.ticket_tiflux, (200 if self.ticket_tiflux is not None else 404)
+
+    def renomear_ticket(self, ticket_number, titulo):
+        self.renomeados.append((ticket_number, titulo))
+        return self.erro_ao_renomear
+
+    def listar_arquivos_ticket(self, ticket_number, tamanho_pagina, max_paginas):
+        return self.arquivos_ticket
+
+    def baixar_arquivo(self, url):
+        return self.conteudos_por_url.get(url)
 
     def obter_id_solicitante(self, nome_glpi, email_glpi, telefone=None):
         self.solicitantes_pedidos.append((nome_glpi, email_glpi, telefone))
@@ -215,6 +235,7 @@ class FakeTifluxClientContador(FakeTifluxClient):
         "obter_ticket", "listar_tickets_atualizados_desde", "listar_tickets_abertos", "listar_respostas",
         "listar_comunicacoes_internas", "publicar_resposta_cliente", "publicar_comunicacao_interna",
         "reabrir_ticket", "atribuir_tecnico", "enviar_anexos",
+        "renomear_ticket", "listar_arquivos_ticket", "baixar_arquivo",
     })
 
     def __init__(self):
@@ -225,6 +246,35 @@ class FakeTifluxClientContador(FakeTifluxClient):
         if nome in type(self)._METODOS_HTTP:
             object.__getattribute__(self, "requisicoes").append(nome)
         return object.__getattribute__(self, nome)
+
+
+class FakeGlpiAberturaClient:
+    """Duplo de GlpiAberturaClient (spec 009); ids criados a partir de 35001."""
+
+    def __init__(self):
+        self.usuarios_por_email: dict[str, int] = {}
+        self.chamados_criados: list[dict] = []
+        self.resultado_criar_chamado: ResultadoCriacaoGlpi | None = None
+        self.telefones_gravados: list[tuple[int, str]] = []
+        self.erro_ao_gravar_telefone: str | None = None
+        self.documentos_anexados: list[tuple[int, str, bytes, str]] = []
+        self.erro_ao_anexar: str | None = None
+
+    def buscar_usuario_por_email(self, email):
+        return self.usuarios_por_email.get(email)
+
+    def criar_chamado(self, campos):
+        self.chamados_criados.append(campos)
+        return self.resultado_criar_chamado or ResultadoCriacaoGlpi(35000 + len(self.chamados_criados), None, False)
+
+    def gravar_telefone(self, id_glpi, telefone):
+        self.telefones_gravados.append((id_glpi, telefone))
+        return self.erro_ao_gravar_telefone
+
+    def anexar_documento(self, id_glpi, nome_arquivo, conteudo, mime):
+        self.documentos_anexados.append((id_glpi, nome_arquivo, conteudo, mime))
+        return self.erro_ao_anexar
+
 
 class _FakeHttpResponse:
     def __init__(self, status_code, json_data, text: str = ""):

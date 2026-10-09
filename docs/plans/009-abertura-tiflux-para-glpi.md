@@ -78,7 +78,7 @@ chamadas novas vão para módulos novos.
 - [x] 5. Escrita no GLPI: achar usuário por e-mail, criar chamado com atores,
   gravar telefone. Files: glpi_abertura_client, glpi_client, testes. Done:
   testes com fake.
-- [ ] 6. Tiflux: renomear ticket, listar/baixar arquivos; anexos -> GLPI
+- [x] 6. Tiflux: renomear ticket, listar/baixar arquivos; anexos -> GLPI
   Document. Files: tiflux_client, anexos_tiflux_para_glpi, testes. Done: testes.
 - [ ] 7. Orquestração + panorama + main + entrypoint manual
   `python -m sync.abertura_tiflux_para_glpi --numero-tiflux N [--aplicar]`

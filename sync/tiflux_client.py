@@ -347,6 +347,28 @@ class TifluxClient:
             return True, None
         return False, f"Falha ao reabrir ticket no Tiflux ({resp.status_code}): {resp.text}"
 
+    def renomear_ticket(self, ticket_number: NumeroTiflux, titulo: str) -> str | None:
+        """
+        PUT /tickets/{n} só com `title` (spec 009: vínculo "<titulo> (<id_glpi>)").
+        Devolve o erro, ou None se renomeou. Ex.: tiflux.renomear_ticket(364990, "Erro (35001)") -> None
+        """
+        resp = self._session.put(
+            f"{self._url_base}/tickets/{ticket_number}", json={"title": titulo},
+            headers=self._headers_json, timeout=self._timeout,
+        )
+        if resp.status_code == 200:
+            return None
+        return f"Falha ao renomear ticket #{ticket_number} no Tiflux para {titulo!r} ({resp.status_code}): {resp.text}"
+
+    def listar_arquivos_ticket(self, ticket_number: NumeroTiflux, tamanho_pagina: int, max_paginas: int) -> list[dict]:
+        """GET /tickets/{n}/files: [{"id", "file_name", "content_type", "size", "url" (S3 pré-assinada)}]."""
+        return self._listar_paginado("files", ticket_number, tamanho_pagina, max_paginas)
+
+    def baixar_arquivo(self, url: str) -> bytes | None:
+        """Conteúdo de uma URL pré-assinada de /files, sem o token (o S3 recusa Authorization extra); None se falhar."""
+        resp = self._session.get(url, timeout=self._timeout)
+        return resp.content if resp.status_code == 200 else None
+
     def publicar_resposta_cliente(
         self, ticket_number: NumeroTiflux, conteudo: str, nome_requerente: str, anexos: list[Anexo] | None = None,
     ) -> requests.Response:
