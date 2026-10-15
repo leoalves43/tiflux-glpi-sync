@@ -10,8 +10,7 @@ DONE (2026-10-09), specs 009-012 on main and deployed, 457 tests green:
 
 NEXT:
 0. Spec 013 (validação GLPI -> Tiflux) escrita 2026-10-15, aguarda aprovação + 2 decisões pendentes no spec.
-1. Watch first real tickets: Tiflux-opened ("🆕") and GLPI one without group (group 22 added?); first ARRECADAÇÃO one (stage 233286?). Close test GLPI #35009 / Tiflux #364984.
-2. Untested live: ticket opened+closed between runs (AC 9).
+1. Watch first real tickets: Tiflux-opened ("🆕") and GLPI one without group (group 22 added?); first ARRECADAÇÃO one (stage 233286?). Close test GLPI #35009 / Tiflux #364984. Untested live: ticket opened+closed between runs (AC 9).
 
 RISKS:
 - Files > ~2 MB fail on GLPI's PHP upload limit (logged, ticket still created). Infra fix.
