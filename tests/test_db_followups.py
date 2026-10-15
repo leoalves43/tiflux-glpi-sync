@@ -66,6 +66,17 @@ class TestObterFollowupsGlpiJaProcessados(unittest.TestCase):
     def test_retorna_conjunto_de_ids_origem(self):
         conn = FakeConnection(respostas=[[(10,), (11,)]])
         self.assertEqual(db_followups.obter_followups_glpi_ja_processados(conn, _CONFIG, 99), {10, 11})
+        self.assertEqual(conn.execucoes[0][1], ("glpi_para_tiflux", 99))
+
+
+class TestObterIdsOrigemComSucesso(unittest.TestCase):
+    def test_filtra_pela_direcao_e_so_sucesso(self):
+        conn = FakeConnection(respostas=[[(1474,)]])
+        ids = db_followups.obter_ids_origem_com_sucesso(conn, _CONFIG, 35092, "validacao_pedido")
+        sql, params = conn.execucoes[0]
+        self.assertEqual(ids, {1474})
+        self.assertEqual(params, ("validacao_pedido", 35092))
+        self.assertIn("status = 'sucesso'", sql)
 
 
 class TestObterRespostasTifluxJaProcessadasOuProprias(unittest.TestCase):

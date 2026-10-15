@@ -67,12 +67,21 @@ def obter_followups_glpi_ja_processados(conn: ConexaoDb, config: Config, id_glpi
     obter_ids_ja_processados p/ chamados) — um followup que falhou fica de
     fora daqui de propósito, pra ser retentado na próxima execução.
     """
+    return obter_ids_origem_com_sucesso(conn, config, id_glpi, "glpi_para_tiflux")
+
+
+def obter_ids_origem_com_sucesso(conn: ConexaoDb, config: Config, id_glpi: int, direcao: str) -> set[int]:
+    """
+    id_origem gravados com status='sucesso' nesta direcao para o chamado;
+    'erro' fica de fora pra ser retentado.
+    Ex.: obter_ids_origem_com_sucesso(conn, config, 35092, "validacao_pedido") -> {1474}
+    """
     tabela = config.tabela_followups
     with conn.cursor() as cur:
         cur.execute(
             f"SELECT id_origem FROM {tabela} "
-            f"WHERE direcao = 'glpi_para_tiflux' AND status = 'sucesso' AND id_glpi = %s",
-            (id_glpi,),
+            f"WHERE direcao = %s AND status = 'sucesso' AND id_glpi = %s",
+            (direcao, id_glpi),
         )
         return {row[0] for row in cur.fetchall()}
 
