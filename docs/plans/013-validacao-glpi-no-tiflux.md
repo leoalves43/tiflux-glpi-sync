@@ -52,7 +52,7 @@ Spec: `docs/specs/013-validacao-glpi-no-tiflux.md`.
   testes AC 1-6, 8.
 - [x] 4. Ligar em `sincronizacao_followups` (dois caminhos, pula
   `global_validation == 1`). Done: testes AC 7 + placar.
-- [ ] 5. Docs: toon, ARCHITECTURE, README, `exemplo.env`, LOG. Done: lint +
+- [x] 5. Docs: toon, ARCHITECTURE, README, `exemplo.env`, LOG. Done: lint +
   suíte verde.
 - [ ] 6. Deploy com `VALIDACAO_GLPI_DESDE_ID=1474`. Done: AC 9 nos logs e no
   Tiflux (#365227, #365366).

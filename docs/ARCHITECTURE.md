@@ -35,8 +35,9 @@ Three sync passes per run, all driven from `sync/main.py:main()`:
    the light one (no Tiflux GET; `/answers` only if updated). Failures -> `prioritario`:
    - `sincronizar_followups_glpi_para_tiflux()` — GLPI `ITILFollowup` ->
      Tiflux `/client-answers`, always with the GLPI author's name (public only).
-   - `sincronizar_followups_tiflux_para_glpi()` — Tiflux answers/internal
-     communications -> GLPI `ITILFollowup`.
+   - `publicar_validacoes_no_tiflux()` (spec 013, off unless `VALIDACAO_GLPI_DESDE_ID`) —
+     GLPI `TicketValidation` request/answer -> `/client-answers`; skipped if `global_validation`=1.
+   - `sincronizar_followups_tiflux_para_glpi()` — Tiflux answers/internal communications -> GLPI.
    Cascade is Tiflux -> GLPI, except: a cascade-closed chamado reopened in GLPI while
    Tiflux is closed -> `reabrir_tiflux_apos_recusa_glpi()` reopens Tiflux (retries each run, spec 004).
    Every GLPI ticket the integration creates, reopens or answers ends Pendente (4).
@@ -58,6 +59,7 @@ Three sync passes per run, all driven from `sync/main.py:main()`:
 | `sync/processamento_chamado.py` | `processar_chamado()` — creates one ticket end to end |
 | `sync/sincronizacao_followups.py` | orchestrator: picks tickets, runs publish + cascade per ticket, `PlacarFollowups` log line |
 | `sync/publicacao_followups.py` | the two directional followup publishers (GLPI->Tiflux, Tiflux->GLPI) |
+| `sync/validacoes_glpi.py` | GLPI validation request/answer -> Tiflux answer, one audit row per event (spec 013) |
 | `sync/cascata_status.py` | cascade close/reopen GLPI<->Tiflux and Tiflux reopen after GLPI refusal |
 | `sync/mudancas_status_tiflux.py` | picks tickets recently closed/reopened in Tiflux so the cascade runs every cycle |
 | `sync/panorama_tiflux.py` | `PanoramaTiflux`: the 2 listings per run, checkpoint window, safety-sweep pairs (spec 008) |
@@ -71,12 +73,10 @@ Clients built once per run in `main()`, passed as parameters; `TifluxClient` cac
 
 ## Two audit tables (Postgres, schema from `DB_SCHEMA` cred, default `siap_custom`)
 
-Full DDL and column reference: `docs/data/audit_tables.toon`. Summary:
-
+Full DDL and column reference: `docs/data/audit_tables.toon`.
 - `api_glpi_tiflux` — one row per GLPI ticket (`id_glpi` unique), creation only (both directions).
-- `api_glpi_tiflux_followups` — one row per followup/answer, conflict key
-  `(direcao, id_origem)`. Tracks both sync directions and doubles as the
-  echo-prevention mechanism (see decisions/LOG.md).
+- `api_glpi_tiflux_followups` — one row per followup/answer/event, conflict key `(direcao, id_origem)`;
+  doubles as echo prevention (decisions/LOG.md).
 
 ## External APIs
 

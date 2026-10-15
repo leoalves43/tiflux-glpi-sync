@@ -90,6 +90,10 @@ de chamado novo do GLPI.
   - resposta pública do Tiflux vira acompanhamento no GLPI, com o nome de quem
     respondeu e a data, e o chamado fica Pendente.
   - Comentários privados e comunicações internas não cruzam.
+- **Validação no GLPI:** o pedido de validação vira resposta no Tiflux
+  ("🔐 Validação solicitada a ...", autor = quem pediu) e a decisão também
+  ("✅ aprovada" / "❌ recusada por ...", autor = validador), com os
+  comentários. Só validações a partir de `VALIDACAO_GLPI_DESDE_ID`.
   Acompanhamentos escritos no GLPI pela conta Suporte Embras (4988) não vão
   para o Tiflux: é a conta da própria integração (evita eco). O mesmo vale
   para a conta antiga da Sânia (4816), usada pela integração no passado.
@@ -128,6 +132,7 @@ Copie `exemplo.env` para `.env` na raiz e preencha:
 | `RESERVA_REQUISICOES_TIFLUX` | não | com a cota do minuto nesse valor ou abaixo, espera a virada (padrão 5) |
 | `MARGEM_CHECKPOINT_TIFLUX_MINUTOS` | não | minutos que a listagem de alterados volta antes da última execução (padrão 5) |
 | `VARREDURA_COMPLETA_POR_EXECUCAO` | não | chamados conferidos por completo por execução (padrão 1) |
+| `VALIDACAO_GLPI_DESDE_ID` | não | id da primeira validação do GLPI publicada no Tiflux (produção: `1474`); vazio ou 0 desliga |
 
 O `.env` nunca é commitado nem entra na imagem Docker. Variáveis de ambiente
 sobrescrevem o `.env`, então o mesmo arquivo serve com e sem Docker.
