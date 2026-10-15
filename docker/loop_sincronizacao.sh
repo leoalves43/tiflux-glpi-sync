@@ -1,6 +1,7 @@
 #!/bin/sh
 # Substitui o Agendador de Tarefas do Windows: roda uma sincronização a cada
-# INTERVALO_SEGUNDOS, alinhada ao relógio (120 -> 12:00, 12:02, 12:04...).
+# INTERVALO_SEGUNDOS, alinhada ao relógio (120 -> 12:00, 12:02, 12:04...),
+# e uma logo ao subir o container.
 # Execuções nunca se sobrepõem (não há lock entre elas): se uma passar do
 # próximo horário, a seguinte espera o horário depois dela.
 #
@@ -35,7 +36,16 @@ aguardar_processo() {
     done
 }
 
+executar_sincronizacao() {
+    # Python fora do grupo de sinais do shell: o TERM do Docker vai só pro PID 1.
+    python glpi_tiflux.py &
+    aguardar_processo $!
+}
+
 validar_intervalo
+# Ao subir o container roda um ciclo na hora, sem esperar o próximo horário;
+# depois segue alinhado ao relógio.
+executar_sincronizacao
 while [ "$PARAR" -eq 0 ]; do
     sleep "$(segundos_ate_proximo_horario)" &
     PID_SLEEP=$!
@@ -43,9 +53,7 @@ while [ "$PARAR" -eq 0 ]; do
     kill "$PID_SLEEP" 2>/dev/null
     [ "$PARAR" -eq 1 ] && break
 
-    # Python fora do grupo de sinais do shell: o TERM do Docker vai só pro PID 1.
-    python glpi_tiflux.py &
-    aguardar_processo $!
+    executar_sincronizacao
 done
 
 echo "Parada solicitada — encerrando após a última execução."

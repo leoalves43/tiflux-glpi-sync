@@ -1,7 +1,7 @@
 # Handoff
 
 DONE (2026-10-15), plano 013 completo na main e em produção, 474 testes verdes:
-- Loop do container: 120 s alinhado ao relógio (12:00, 12:02...), desde 2026-10-15 tarde.
+- Loop do container: 120 s alinhado ao relógio (12:00, 12:02...) + 1 ciclo ao subir, desde 2026-10-15 tarde.
 - Spec 013: validação GLPI -> resposta pública no Tiflux, corte VALIDACAO_GLPI_DESDE_ID=1474 (.env).
   10:40: pedido 1474 -> Tiflux #365227 (id 32029054), 1480 -> #365366 (id 32029050).
 - Specs 009-012 em produção desde 2026-10-09 (ver specs/plans).
