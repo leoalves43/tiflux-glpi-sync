@@ -68,6 +68,15 @@ class TestConfigCarregar(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, valor):
                 Config.carregar(self.caminho_env, ambiente={"ABERTURA_TIFLUX_DESDE": valor})
 
+    def test_validacao_glpi_desde_id_ausente_desliga_e_numero_liga(self):
+        self.assertEqual(Config.carregar(self.caminho_env, ambiente={}).validacao_glpi_desde_id, 0)
+        config = Config.carregar(self.caminho_env, ambiente={"VALIDACAO_GLPI_DESDE_ID": "1474"})
+        self.assertEqual(config.validacao_glpi_desde_id, 1474)
+
+    def test_validacao_glpi_desde_id_invalido_falha_com_o_valor(self):
+        with self.assertRaisesRegex(ValueError, "1474a"):
+            Config.carregar(self.caminho_env, ambiente={"VALIDACAO_GLPI_DESDE_ID": "1474a"})
+
 
 if __name__ == "__main__":
     unittest.main()

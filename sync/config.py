@@ -159,14 +159,18 @@ class Config:
     # auditoria deduplica). Sem checkpoint, usa janela_mudancas_status_tiflux_minutos.
     margem_checkpoint_tiflux_minutos: int = 5
     # Chamados conferidos por completo (GET individual + respostas) por
-    # execução, como rede de segurança da listagem. 1 x ~480 execuções/dia
-    # cobre ~480 chamados por dia.
+    # execução, como rede de segurança da listagem. 1 x ~288 execuções/dia
+    # (ciclo de 5 min) cobre ~288 chamados por dia.
     varredura_completa_por_execucao: int = 1
 
     # Spec 009: tickets abertos no Tiflux a partir deste instante (UTC) viram
     # chamado no GLPI. None = funcionalidade desligada. Fixo no .env (nunca a
     # hora de subida do container), pra não importar tickets antigos.
     abertura_tiflux_desde: datetime | None = None
+
+    # Spec 013: validações do GLPI com id >= este valor viram resposta no
+    # Tiflux (1474 = a do GLPI #35092, corte pedido pelo usuário). 0 = desligado.
+    validacao_glpi_desde_id: int = 0
 
     @staticmethod
     def carregar(caminho_credenciais: str = ".env", ambiente: Mapping[str, str] | None = None) -> "Config":
@@ -197,4 +201,5 @@ class Config:
             margem_checkpoint_tiflux_minutos=inteiro_nao_negativo(cred, "MARGEM_CHECKPOINT_TIFLUX_MINUTOS", 5),
             varredura_completa_por_execucao=inteiro_nao_negativo(cred, "VARREDURA_COMPLETA_POR_EXECUCAO", 1),
             abertura_tiflux_desde=data_utc_opcional(cred, "ABERTURA_TIFLUX_DESDE"),
+            validacao_glpi_desde_id=inteiro_nao_negativo(cred, "VALIDACAO_GLPI_DESDE_ID", 0),
         )

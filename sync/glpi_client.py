@@ -179,14 +179,17 @@ class GlpiClient:
         return resp.json(), resp.status_code
 
     def obter_followups(self, id_chamado: int) -> list[dict]:
-        """
-        GET /Ticket/{id}/ITILFollowup — lista os followups (públicos e privados)
-        do chamado. Retorna lista de dicts crus do GLPI, ou [] em caso de erro
-        (loga aviso, não levanta).
-        """
-        resp = self._get(f"/Ticket/{id_chamado}/ITILFollowup")
+        """GET /Ticket/{id}/ITILFollowup — followups (públicos e privados) crus; [] em erro (loga, não levanta)."""
+        return self._listar_do_chamado(id_chamado, "ITILFollowup", "followups")
+
+    def obter_validacoes(self, id_chamado: int) -> list[dict]:
+        """GET /Ticket/{id}/TicketValidation (spec 013); [] em erro. Ex.: obter_validacoes(35092) -> [{"id": 1474, ...}]"""
+        return self._listar_do_chamado(id_chamado, "TicketValidation", "validações")
+
+    def _listar_do_chamado(self, id_chamado: int, itemtype: str, descricao: str) -> list[dict]:
+        resp = self._get(f"/Ticket/{id_chamado}/{itemtype}")
         if resp.status_code not in (200, 206):
-            log(f"⚠️ Falha ao buscar followups do chamado #{id_chamado} no GLPI (status {resp.status_code}): {resp.text}")
+            log(f"⚠️ Falha ao buscar {descricao} do chamado #{id_chamado} no GLPI (status {resp.status_code}): {resp.text}")
             return []
         dados = resp.json()
         return dados if isinstance(dados, list) else []

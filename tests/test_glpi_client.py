@@ -90,6 +90,24 @@ class TestObterTicket(unittest.TestCase):
         self.assertEqual((ticket, status), (None, 404))
 
 
+class TestObterValidacoes(unittest.TestCase):
+    def test_devolve_a_lista_do_glpi(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/Ticket/35092/TicketValidation", FakeResponse(200, [{"id": 1474, "status": 2}]))
+        with patch("sync.glpi_client.requests", fake):
+            validacoes = _client(fake).obter_validacoes(35092)
+        self.assertEqual(validacoes, [{"id": 1474, "status": 2}])
+
+    def test_falha_http_devolve_vazio_e_loga(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/Ticket/35092/TicketValidation", FakeResponse(500, text="erro"))
+        saida = io.StringIO()
+        with patch("sync.glpi_client.requests", fake), contextlib.redirect_stdout(saida):
+            validacoes = _client(fake).obter_validacoes(35092)
+        self.assertEqual(validacoes, [])
+        self.assertIn("validações do chamado #35092", saida.getvalue())
+
+
 class TestCriarFollowup(unittest.TestCase):
     def test_sucesso_retorna_id(self):
         fake = FakeRequests()

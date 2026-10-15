@@ -44,7 +44,7 @@ Spec: `docs/specs/013-validacao-glpi-no-tiflux.md`.
   `docker-compose.yml` (`INTERVALO_SEGUNDOS=300`, divisor de 3600), README,
   ARCHITECTURE, spec 003 (crit. 6). Done: logs com início em minuto múltiplo
   de 5; valor inválido sai com erro citando o valor.
-- [ ] 1. `GlpiClient.obter_validacoes` + config do corte. Done: testes
+- [x] 1. `GlpiClient.obter_validacoes` + config do corte. Done: testes
   (lista, falha HTTP -> vazio + log, config inválida cita o valor).
 - [ ] 2. `db_followups`: ids publicados com sucesso por direcao. Done: teste.
 - [ ] 3. `validacoes_glpi.py`: eventos pendentes (corte, pedido antes da
