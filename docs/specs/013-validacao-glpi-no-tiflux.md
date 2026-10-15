@@ -32,6 +32,11 @@ Em chamado GLPI já vinculado a um ticket do Tiflux:
 - Corte: só validações a partir da do GLPI #35092 (id 1474, pedida em
   14/10/2026 10:09), o que inclui a do #35140 (id 1480) e todas as seguintes.
   Validações anteriores nunca são publicadas (decidido 2026-10-15).
+- Premissa de processo (usuário, 2026-10-15): o ticket fica aberto nos dois
+  sistemas até a validação ser respondida; recusa = encerrar no Tiflux depois.
+  A resposta é respaldo jurídico. Validação respondida com o chamado já
+  fechado no GLPI ou no Tiflux NÃO é publicada (sai como 'erro' 422 ou nem é
+  lida) — se a premissa mudar, tratar esses dois casos.
 
 ## Acceptance criteria
 1. Pedido de validação num chamado vinculado gera uma resposta 🔐 no ticket do
