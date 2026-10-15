@@ -1,6 +1,6 @@
 #!/bin/sh
 # Substitui o Agendador de Tarefas do Windows: roda uma sincronização a cada
-# INTERVALO_SEGUNDOS, alinhada ao relógio (120 -> 12:00, 12:02, 12:04...),
+# INTERVALO_SEGUNDOS, alinhada ao relógio (60 -> 12:00, 12:01, 12:02...),
 # e uma logo ao subir o container.
 # Execuções nunca se sobrepõem (não há lock entre elas): se uma passar do
 # próximo horário, a seguinte espera o horário depois dela.
@@ -9,7 +9,7 @@
 # uma execução em andamento: matar no meio pode postar um followup sem gravar
 # a auditoria, e ele seria repostado na execução seguinte. O sinal só marca a
 # parada; o loop sai quando a execução atual termina.
-INTERVALO="${INTERVALO_SEGUNDOS:-120}"
+INTERVALO="${INTERVALO_SEGUNDOS:-60}"
 PARAR=0
 trap 'PARAR=1' TERM INT
 
@@ -19,7 +19,7 @@ validar_intervalo() {
         ''|*[!0-9]*) ;;
         *) [ "$INTERVALO" -gt 0 ] && [ $((3600 % INTERVALO)) -eq 0 ] && return 0 ;;
     esac
-    echo "INTERVALO_SEGUNDOS=$INTERVALO inválido: esperado divisor de 3600 em segundos (ex.: 120)" >&2
+    echo "INTERVALO_SEGUNDOS=$INTERVALO inválido: esperado divisor de 3600 em segundos (ex.: 60)" >&2
     exit 1
 }
 
