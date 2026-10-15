@@ -27,14 +27,11 @@ Em chamado GLPI já vinculado a um ticket do Tiflux:
   resposta), com o nome real do GLPI, como os acompanhamentos.
 - Só no sentido GLPI -> Tiflux. Não muda status, estágio nem responsável em
   nenhum dos dois sistemas.
-- Retroativo: validações já existentes em chamados vinculados e ainda abertos
-  (ex.: #35092, #35140) são publicadas no primeiro ciclo após o deploy.
-
-## Decisões pendentes (responder antes do plano)
-1. Canal no Tiflux: resposta visível como as do GLPI (recomendado, mesmo canal
-   dos acompanhamentos) ou comunicação interna (só a equipe Embras vê)?
-2. Retroativo: publicar também validações já respondidas antes do deploy, ou
-   só as que ainda aguardam resposta?
+- Canal: resposta pública no Tiflux, o mesmo dos acompanhamentos (decidido
+  2026-10-15).
+- Corte: só validações a partir da do GLPI #35092 (id 1474, pedida em
+  14/10/2026 10:09), o que inclui a do #35140 (id 1480) e todas as seguintes.
+  Validações anteriores nunca são publicadas (decidido 2026-10-15).
 
 ## Acceptance criteria
 1. Pedido de validação num chamado vinculado gera uma resposta 🔐 no ticket do
@@ -46,6 +43,8 @@ Em chamado GLPI já vinculado a um ticket do Tiflux:
 5. Falha na publicação fica como erro e é publicada no ciclo seguinte, uma vez.
 6. Pedido e resposta no mesmo intervalo: os dois aparecem, pedido antes.
 7. Chamado não vinculado ao Tiflux ou fora do escopo: nada publicado.
+8. Validação anterior ao corte: nada publicado.
+9. No primeiro ciclo após o deploy, #365227 e #365366 recebem a resposta 🔐.
 
 ## Out of scope
 - Responder/aprovar a validação pelo Tiflux (Tiflux -> GLPI).
