@@ -26,6 +26,7 @@ class FakeGlpiClient:
         self.grupos_observadores_adicionados: list[tuple[int, int]] = []
         self.resultado_adicionar_grupo_observador: tuple[bool, str | None] = (True, None)
         self.followups: dict[int, list[dict]] = {}
+        self.validacoes: dict[int, list[dict]] = {}
         self.requerentes: dict[int, tuple[str, str | None, int | None]] = {}
         self.nomes_usuarios: dict[int, str] = {}
         self.telefones_chamado: dict[int, str] = {}
@@ -74,6 +75,9 @@ class FakeGlpiClient:
 
     def obter_followups(self, id_chamado):
         return self.followups.get(id_chamado, [])
+
+    def obter_validacoes(self, id_chamado):
+        return self.validacoes.get(id_chamado, [])
 
     def criar_followup(self, id_chamado, conteudo_html, is_private=0, users_id=None):
         if self.erro_ao_criar_followup:

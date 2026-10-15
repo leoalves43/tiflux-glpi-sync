@@ -47,7 +47,7 @@ Spec: `docs/specs/013-validacao-glpi-no-tiflux.md`.
 - [x] 1. `GlpiClient.obter_validacoes` + config do corte. Done: testes
   (lista, falha HTTP -> vazio + log, config inválida cita o valor).
 - [x] 2. `db_followups`: ids publicados com sucesso por direcao. Done: teste.
-- [ ] 3. `validacoes_glpi.py`: eventos pendentes (corte, pedido antes da
+- [x] 3. `validacoes_glpi.py`: eventos pendentes (corte, pedido antes da
   resposta, já publicados), texto 🔐/✅/❌, publicação + auditoria. Done:
   testes AC 1-6, 8.
 - [ ] 4. Ligar em `sincronizacao_followups` (dois caminhos, pula
