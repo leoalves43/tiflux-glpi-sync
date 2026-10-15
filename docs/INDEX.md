@@ -27,6 +27,7 @@
 - `docs/plans/011-escopo-por-categoria.md` — read with the spec above; task checklist.
 - `docs/specs/012-estagio-arrecadacao.md` — read when touching the Tiflux stage set on ticket creation.
 - `docs/plans/012-estagio-arrecadacao.md` — read with the spec above; task checklist.
+- `docs/specs/013-validacao-glpi-no-tiflux.md` — read when touching GLPI ticket validations (TicketValidation) shown in Tiflux.
 - `docs/data/audit_tables.toon` — read when writing SQL against either audit table (column names, types, conflict keys).
 
 No other docs exist. A path not listed above does not exist — don't assume it.
