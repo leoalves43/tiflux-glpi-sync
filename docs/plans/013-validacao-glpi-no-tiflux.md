@@ -33,12 +33,17 @@ Spec: `docs/specs/013-validacao-glpi-no-tiflux.md`.
 `docs/ARCHITECTURE.md`, README, LOG.
 
 ## Riscos
-- +1 GET no GLPI por chamado aberto com validação, a cada ciclo (2 min).
+- +1 GET no GLPI por chamado aberto com validação, a cada ciclo (5 min).
 - Validação pra grupo (GLPI 11, `itemtype_target`) não existe nesta versão;
   se aparecer, o nome do validador sai "Desconhecido".
 - Nada irreversível além das respostas publicadas no Tiflux.
 
 ## Tarefas
+- [x] 0. (Pedido 2026-10-15, plano aprovado) Ciclo a cada 5 min alinhado ao
+  relógio (12:00, 12:05...): `docker/loop_sincronizacao.sh`,
+  `docker-compose.yml` (`INTERVALO_SEGUNDOS=300`, divisor de 3600), README,
+  ARCHITECTURE, spec 003 (crit. 6). Done: logs com início em minuto múltiplo
+  de 5; valor inválido sai com erro citando o valor.
 - [ ] 1. `GlpiClient.obter_validacoes` + config do corte. Done: testes
   (lista, falha HTTP -> vazio + log, config inválida cita o valor).
 - [ ] 2. `db_followups`: ids publicados com sucesso por direcao. Done: teste.

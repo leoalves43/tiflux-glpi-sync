@@ -29,7 +29,8 @@ quantidade de chamados abertos sincronizados.
    sempre sendo revisitado.
 4. Abertos e nunca varridos são processados antes dos fechados.
 5. Só chamados `status='sucesso'` entram no rodízio (regra atual mantida).
-6. O intervalo padrão entre execuções no container é 120 s.
+6. O intervalo padrão entre execuções no container é 120 s. (Substituído em
+   2026-10-15 pelo plano 013, tarefa 0: 300 s alinhado ao relógio.)
 7. Os testes existentes continuam passando; a nova ordem tem teste próprio.
 
 ## Out of scope
