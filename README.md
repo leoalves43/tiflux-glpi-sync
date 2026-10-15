@@ -175,8 +175,8 @@ docker compose stop              # para, esperando a execução em andamento ter
 docker compose down              # para e remove o container
 ```
 
-- O container roda uma sincronização a cada `INTERVALO_SEGUNDOS` (300, no
-  `docker-compose.yml`), alinhada ao relógio: 12:00, 12:05, 12:10... O valor
+- O container roda uma sincronização a cada `INTERVALO_SEGUNDOS` (120, no
+  `docker-compose.yml`), alinhada ao relógio: 12:00, 12:02, 12:04... O valor
   tem de dividir 3600. Execuções nunca se sobrepõem, e um `stop`
   espera até 10 minutos a execução em andamento acabar.
 - Depois de alterar o código, rode `docker compose up -d --build` de novo.

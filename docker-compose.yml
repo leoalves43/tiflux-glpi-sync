@@ -10,7 +10,7 @@ services:
       # DB_HOST vem do .env (Postgres remoto). Não usar localhost lá: dentro do
       # container, localhost é o próprio container.
       TZ: America/Sao_Paulo
-      INTERVALO_SEGUNDOS: "300"
+      INTERVALO_SEGUNDOS: "120"
     volumes:
       # Não usar env_file: o .env tem chaves com espaço antes do "=".
       - ./.env:/app/.env:ro
