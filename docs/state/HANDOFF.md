@@ -8,8 +8,8 @@ DONE (2026-10-15), plano 013 completo na main e em produção, 474 testes verdes
 
 NEXT:
 1. Conferir a 1ª resposta real de validação (✅/❌) em #365227/#365366 — AC 2 só testado em unidade.
-2. GLPI #35071 / Tiflux #365199: encerramento em cascata falha desde 08:21 (57 tentativas):
-   "não pode solucionar/fechar um chamado com tarefas a fazer". Resolver as tarefas no GLPI.
+2. GLPI #35071 encerrado 11:30 após fecharem as tarefas. Followup 78438 (erro 422, Tiflux
+   fechado) ignorado por decisão do usuário: linha 'erro' fica, sem retentativa.
 3. Watch first ARRECADAÇÃO ticket (stage 233286?) and Tiflux-opened ("🆕"). Untested live: AC 9 spec 009.
 
 RISKS:
