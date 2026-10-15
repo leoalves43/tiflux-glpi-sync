@@ -19,6 +19,10 @@ from sync.placar_followups import PlacarFollowups
 from sync.publicacao_followups import sincronizar_followups_glpi_para_tiflux, sincronizar_followups_tiflux_para_glpi
 from sync.tiflux_client import TifluxClient
 from sync.tipos import ConexaoDb, NumeroTiflux
+from sync.validacoes_glpi import publicar_validacoes_no_tiflux
+
+# Ticket.global_validation no GLPI 10: 1 = nenhuma validação no chamado.
+_GLPI_SEM_VALIDACAO = 1
 
 
 def sincronizar_followups(
@@ -151,7 +155,7 @@ def _sincronizar_chamado_pelo_panorama(
     if status not in STATUS_GLPI_ABERTOS:
         db_followups.registrar_chamado_fechado_para_followups(conn, config, id_glpi, status == STATUS_GLPI_SOLUCIONADO)
         return
-    placar.somar_glpi_para_tiflux(*sincronizar_followups_glpi_para_tiflux(conn, config, glpi, tiflux, id_glpi, numero_tiflux))
+    _publicar_glpi_no_tiflux(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_glpi, placar)
     if numero_tiflux in panorama.atualizados:
         placar.somar_tiflux_para_glpi(*sincronizar_followups_tiflux_para_glpi(conn, config, glpi, tiflux, id_glpi, numero_tiflux))
     db_followups.registrar_chamado_aberto_varrido(conn, config, id_glpi, numero_tiflux)
@@ -167,12 +171,12 @@ def _sincronizar_chamado_completo(
     if ticket_glpi.get("status") not in STATUS_GLPI_ABERTOS:
         tratar_chamado_fechado_no_glpi(conn, config, glpi, id_glpi, numero_tiflux, ticket_glpi, ticket_tiflux, placar)
         return
-    _sincronizar_chamado_aberto_no_glpi(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_tiflux, placar)
+    _sincronizar_chamado_aberto_no_glpi(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_glpi, ticket_tiflux, placar)
 
 
 def _sincronizar_chamado_aberto_no_glpi(
     conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
-    numero_tiflux: NumeroTiflux, ticket_tiflux: dict | None, placar: PlacarFollowups,
+    numero_tiflux: NumeroTiflux, ticket_glpi: dict, ticket_tiflux: dict | None, placar: PlacarFollowups,
 ) -> None:
     if recusa_glpi_pendente(conn, config, id_glpi, ticket_tiflux):
         reabriu, ticket_tiflux = _reabrir_tiflux_mantendo_responsavel(
@@ -185,7 +189,7 @@ def _sincronizar_chamado_aberto_no_glpi(
             db_followups.registrar_chamado_aberto_varrido(conn, config, id_glpi, numero_tiflux)
             return
 
-    _sincronizar_followups_nos_dois_sentidos(conn, config, glpi, tiflux, id_glpi, numero_tiflux, placar)
+    _sincronizar_followups_nos_dois_sentidos(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_glpi, placar)
     db_followups.registrar_chamado_aberto_varrido(conn, config, id_glpi, numero_tiflux)
 
     if ticket_tiflux and ticket_tiflux.get("is_closed"):
@@ -210,7 +214,18 @@ def _reabrir_tiflux_mantendo_responsavel(
 
 def _sincronizar_followups_nos_dois_sentidos(
     conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
-    numero_tiflux: NumeroTiflux, placar: PlacarFollowups,
+    numero_tiflux: NumeroTiflux, ticket_glpi: dict, placar: PlacarFollowups,
 ) -> None:
-    placar.somar_glpi_para_tiflux(*sincronizar_followups_glpi_para_tiflux(conn, config, glpi, tiflux, id_glpi, numero_tiflux))
+    _publicar_glpi_no_tiflux(conn, config, glpi, tiflux, id_glpi, numero_tiflux, ticket_glpi, placar)
     placar.somar_tiflux_para_glpi(*sincronizar_followups_tiflux_para_glpi(conn, config, glpi, tiflux, id_glpi, numero_tiflux))
+
+
+def _publicar_glpi_no_tiflux(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_glpi: int,
+    numero_tiflux: NumeroTiflux, ticket_glpi: dict, placar: PlacarFollowups,
+) -> None:
+    """Followups e depois validações (spec 013); chamado sem validação não gasta o GET das validações."""
+    placar.somar_glpi_para_tiflux(*sincronizar_followups_glpi_para_tiflux(conn, config, glpi, tiflux, id_glpi, numero_tiflux))
+    if ticket_glpi.get("global_validation") == _GLPI_SEM_VALIDACAO:
+        return
+    placar.somar_glpi_para_tiflux(*publicar_validacoes_no_tiflux(conn, config, glpi, tiflux, id_glpi, numero_tiflux))

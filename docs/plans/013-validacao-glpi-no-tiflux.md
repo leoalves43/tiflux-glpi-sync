@@ -50,7 +50,7 @@ Spec: `docs/specs/013-validacao-glpi-no-tiflux.md`.
 - [x] 3. `validacoes_glpi.py`: eventos pendentes (corte, pedido antes da
   resposta, já publicados), texto 🔐/✅/❌, publicação + auditoria. Done:
   testes AC 1-6, 8.
-- [ ] 4. Ligar em `sincronizacao_followups` (dois caminhos, pula
+- [x] 4. Ligar em `sincronizacao_followups` (dois caminhos, pula
   `global_validation == 1`). Done: testes AC 7 + placar.
 - [ ] 5. Docs: toon, ARCHITECTURE, README, `exemplo.env`, LOG. Done: lint +
   suíte verde.

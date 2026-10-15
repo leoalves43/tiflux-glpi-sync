@@ -3,6 +3,7 @@
 import contextlib
 import io
 import unittest
+from dataclasses import replace
 
 from sync.config import Config
 from sync.main import _sincronizar_followups_com_panorama
@@ -164,6 +165,37 @@ class TestCaminhoPeloPanorama(unittest.TestCase):
         conn = self._sincronizar(panorama_de_teste())
         self.assertEqual(self.tiflux.requisicoes, [])
         self.assertIn(("verificacao_status", "status", -1, None, "solucionado"), _gravacoes(conn))
+
+
+class TestValidacoesNoCiclo(unittest.TestCase):
+    """Spec 013: validações saem junto com os followups, nos dois caminhos de chamado aberto."""
+
+    def setUp(self):
+        self.glpi = FakeGlpiClient()
+        self.tiflux = FakeTifluxClientContador()
+        self.tiflux.ticket_tiflux = {"is_closed": False, "desk": {"id": 37964}}
+        self.glpi.validacoes[1] = [{"id": 1474, "users_id": 7, "users_id_validate": 8, "status": 2}]
+        self.config = replace(_CONFIG, validacao_glpi_desde_id=1474)
+
+    def _sincronizar(self, global_validation: int, panorama) -> str:
+        self.glpi.tickets[1] = {"status": 2, "global_validation": global_validation}
+        saida = io.StringIO()
+        with contextlib.redirect_stdout(saida):
+            sincronizar_followups(FakeConnection(respostas=[[(1, 10)]]), self.config, self.glpi, self.tiflux, panorama)
+        return saida.getvalue()
+
+    def test_caminho_pelo_panorama_publica_o_pedido_e_conta_no_placar(self):
+        log = self._sincronizar(2, panorama_de_teste(abertos=(10,)))
+        self.assertIn("🔐", self.tiflux.publicacoes[0][2])
+        self.assertIn("GLPI->Tiflux: 1 ok / 0 erro", log)
+
+    def test_caminho_completo_publica_o_pedido(self):
+        self._sincronizar(2, panorama_de_teste(abertos=(10,), mudancas=((1, 10),)))
+        self.assertIn("🔐", self.tiflux.publicacoes[0][2])
+
+    def test_chamado_sem_validacao_no_glpi_nao_publica(self):
+        self._sincronizar(1, panorama_de_teste(abertos=(10,)))
+        self.assertEqual(self.tiflux.publicacoes, [])
 
 
 class TestVarreduraDeSeguranca(unittest.TestCase):
