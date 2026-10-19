@@ -14,4 +14,4 @@ resposta), `sync/publicacao_followups.py`, `tests/fake_clients.py`, testes, READ
 ## Tarefas
 - [x] 1. Cliente Tiflux lista arquivos da resposta; `anexar_documento` recebe itemtype. Done: testes.
 - [x] 2. Cópia dos arquivos da resposta no followup recém-criado. Done: testes AC 1-4.
-- [ ] 3. Deploy + recuperar #35249 (6 arquivos restantes; 1 já enviado no probe). Done: AC 5.
+- [x] 3. Deploy + recuperar #35249 (6 arquivos restantes; 1 já enviado no probe). Done: AC 5.

@@ -1,21 +1,18 @@
 # Handoff
 
-DONE (2026-10-19), diagnóstico GLPI #35249 / Tiflux #365680 (sem código alterado):
-- Resposta Tiflux 32082144 (files_count=7) virou followup GLPI 78602 só com texto.
-- Causa: `_publicar_respostas_publicas` (sync/publicacao_followups.py:196) não tem caminho de anexos.
-  Arquivos ficam só em `GET /tickets/{n}/answers/{id}` (campo `files`, URL S3 72 h); `/tickets/{n}/files` vazio.
-- Sistêmico: toda resposta Tiflux com anexo perdeu os arquivos (LOG 2026-10-07: "não testado").
-- Plano 013 completo em produção desde 2026-10-15 (loop 60 s, validação GLPI no Tiflux).
+DONE (2026-10-19), spec/plano 014 completos na main e em produção (deploy 15:42), 486 testes verdes:
+- Resposta pública do Tiflux com arquivos -> Documents ligados ao followup GLPI (itemtype ITILFollowup).
+  GLPI -> Tiflux já levava anexos de followup desde 2026-09-21.
+- GLPI #35249 recuperado: docs 17947-17953 no followup 78602; chamado seguiu Solucionado.
+- GLPI grava `name` = "Documento: Acompanhamento - ..."; `filename` é o nome real (comportamento do GLPI).
 
 NEXT:
-1. Spec 014: anexos de resposta Tiflux -> GLPI (gatilho files_count>0, reusar `_copiar` de
-   anexos_tiflux_para_glpi.py, falha de anexo não marca 'erro'). Aguardando aprovação do usuário.
-2. Backfill dos 7 arquivos no #35249 (já Solucionado): escrita ao vivo, pedir aprovação antes.
-3. Conferir 1ª resposta de validação real (#365227/#365366); 1º ticket ARRECADAÇÃO; AC 9 spec 009.
+1. Conferir a 1ª resposta real do Tiflux com anexo após o deploy (mensagem "| Anexos: N copiado(s)").
+2. Conferir 1ª resposta de validação real (#365227/#365366); 1º ticket ARRECADAÇÃO; AC 9 spec 009.
 
 RISKS:
-- Vincular Document a ITILFollowup via API não verificado ao vivo.
+- Respostas com anexo sincronizadas antes de 2026-10-19 15:42 seguem sem arquivos (sem backfill, decisão do usuário).
 - Files > ~2 MB fail on GLPI's PHP upload limit (ex.: #35205, PDF 8 MB). `pendente` rows never retried.
 - Validações 1475-1479 em chamados fora do escopo: se vinculados, pedido+resposta antigos são publicados.
 
-CONTEXT: sync/publicacao_followups.py, sync/anexos_tiflux_para_glpi.py, glpi_abertura_client.py:101.
+CONTEXT: specs/014, plans/014, sync/anexos_tiflux_para_glpi.py, sync/publicacao_followups.py.
