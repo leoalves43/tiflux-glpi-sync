@@ -39,10 +39,18 @@ def copiar_anexos_resposta_tiflux_para_glpi(
     """
     if not resposta.get("files_count"):
         return ""
-    arquivos = tiflux.listar_arquivos_resposta(numero_tiflux, resposta.get("id"))
+    arquivos = _ler_arquivos_resposta(tiflux, numero_tiflux, resposta.get("id"))
     if arquivos is None:
         return f" | Anexos: falha ao ler os {resposta.get('files_count')} arquivo(s) da resposta no Tiflux"
     return _copiar_todos(tiflux, glpi_abertura, config, arquivos, "ITILFollowup", id_followup)
+
+
+def _ler_arquivos_resposta(tiflux: TifluxClient, numero_tiflux: NumeroTiflux, id_resposta: int) -> list[dict] | None:
+    """None também em erro de rede/JSON: o followup já existe sem linha na auditoria (ver _copiar)."""
+    try:
+        return tiflux.listar_arquivos_resposta(numero_tiflux, id_resposta)
+    except RequestException:
+        return None
 
 
 def _copiar_todos(

@@ -2,6 +2,8 @@
 
 import unittest
 
+from requests import Timeout
+
 from sync.config import Config
 from sync.publicacao_followups import (
     formatar_data_hora_brasilia,
@@ -220,6 +222,13 @@ class TestSincronizarFollowupsTifluxParaGlpi(unittest.TestCase):
         self.assertEqual(self.glpi.chamados_deixados_pendentes, [])
 
 
+class FakeLeituraRespostaComTimeout:
+    """listar_arquivos_resposta que levanta como requests faria num timeout do Tiflux."""
+
+    def __call__(self, ticket_number: int, id_resposta: int) -> list[dict] | None:
+        raise Timeout(f"/tickets/{ticket_number}/answers/{id_resposta}")
+
+
 _ARQUIVO_RESPOSTA = {"id": 9, "file_name": "a.xlsx", "content_type": "application/xlsx", "size": 4028, "url": "https://s3/a.xlsx"}
 
 
@@ -262,6 +271,12 @@ class TestAnexosDaRespostaTifluxNoFollowupGlpi(unittest.TestCase):
 
     def test_falha_ao_ler_a_resposta_fica_na_mensagem(self):
         self.tiflux.arquivos_por_resposta[32082144] = None
+        self.assertEqual(self._sincronizar(), (1, 0))
+        self.assertIn("falha ao ler os 1 arquivo(s)", self._mensagem_auditada())
+
+    def test_timeout_ao_ler_a_resposta_nao_impede_a_auditoria(self):
+        # Exceção aqui deixaria o followup sem linha na auditoria -> duplicado no próximo ciclo.
+        self.tiflux.listar_arquivos_resposta = FakeLeituraRespostaComTimeout()
         self.assertEqual(self._sincronizar(), (1, 0))
         self.assertIn("falha ao ler os 1 arquivo(s)", self._mensagem_auditada())
 
