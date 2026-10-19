@@ -161,6 +161,8 @@ class FakeTifluxClient:
         self.erro_ao_mover_estagio: str | None = None
         self.erro_ao_renomear: str | None = None
         self.arquivos_ticket: list[dict] = []
+        self.arquivos_por_resposta: dict[int, list[dict] | None] = {}
+        self.respostas_com_arquivos_lidas: list[int] = []
         self.conteudos_por_url: dict[str, bytes] = {}
 
     def validar_mesa_do_cliente(self, id_mesa):
@@ -182,6 +184,10 @@ class FakeTifluxClient:
 
     def listar_arquivos_ticket(self, ticket_number, tamanho_pagina, max_paginas):
         return self.arquivos_ticket
+
+    def listar_arquivos_resposta(self, ticket_number, id_resposta):
+        self.respostas_com_arquivos_lidas.append(id_resposta)
+        return self.arquivos_por_resposta.get(id_resposta)
 
     def baixar_arquivo(self, url):
         return self.conteudos_por_url.get(url)
@@ -254,7 +260,8 @@ class FakeTifluxClientContador(FakeTifluxClient):
         "obter_ticket", "listar_tickets_atualizados_desde", "listar_tickets_abertos", "listar_respostas",
         "listar_comunicacoes_internas", "publicar_resposta_cliente", "publicar_comunicacao_interna",
         "reabrir_ticket", "atribuir_tecnico", "enviar_anexos",
-        "renomear_ticket", "listar_arquivos_ticket", "baixar_arquivo", "mover_para_estagio",
+        "renomear_ticket", "listar_arquivos_ticket", "listar_arquivos_resposta", "baixar_arquivo",
+        "mover_para_estagio",
     })
 
     def __init__(self):
@@ -276,7 +283,7 @@ class FakeGlpiAberturaClient:
         self.resultado_criar_chamado: ResultadoCriacaoGlpi | None = None
         self.telefones_gravados: list[tuple[int, str]] = []
         self.erro_ao_gravar_telefone: str | None = None
-        self.documentos_anexados: list[tuple[int, str, bytes, str]] = []
+        self.documentos_anexados: list[tuple[str, int, str, bytes, str]] = []
         self.erro_ao_anexar: str | None = None
 
     def buscar_usuario_por_email(self, email):
@@ -290,8 +297,8 @@ class FakeGlpiAberturaClient:
         self.telefones_gravados.append((id_glpi, telefone))
         return self.erro_ao_gravar_telefone
 
-    def anexar_documento(self, id_glpi, nome_arquivo, conteudo, mime):
-        self.documentos_anexados.append((id_glpi, nome_arquivo, conteudo, mime))
+    def anexar_documento(self, itemtype, items_id, nome_arquivo, conteudo, mime):
+        self.documentos_anexados.append((itemtype, items_id, nome_arquivo, conteudo, mime))
         return self.erro_ao_anexar
 
 

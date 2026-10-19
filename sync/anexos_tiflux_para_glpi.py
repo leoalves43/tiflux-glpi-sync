@@ -36,4 +36,4 @@ def _copiar(
     conteudo = tiflux.baixar_arquivo(arquivo.get("url") or "")
     if conteudo is None:
         return f"'{nome}': falha ao baixar do Tiflux"
-    return glpi_abertura.anexar_documento(id_glpi, nome, conteudo, arquivo.get("content_type") or "application/octet-stream")
+    return glpi_abertura.anexar_documento("Ticket", id_glpi, nome, conteudo, arquivo.get("content_type") or "application/octet-stream")

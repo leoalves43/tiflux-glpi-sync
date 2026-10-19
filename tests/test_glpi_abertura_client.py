@@ -118,16 +118,25 @@ class TestAnexarDocumento(unittest.TestCase):
     def test_manifesto_vincula_ao_chamado(self):
         fake = FakeRequests()
         fake.programar("POST", "/Document", FakeResponse(201, {"id": 900}))
-        self.assertIsNone(_client(fake).anexar_documento(35001, "print.png", b"png", "image/png"))
+        self.assertIsNone(_client(fake).anexar_documento("Ticket", 35001, "print.png", b"png", "image/png"))
         arquivos = fake.chamadas[-1][2]["files"]
         manifesto = json.loads(arquivos["uploadManifest"][1])["input"]
         self.assertEqual((manifesto["itemtype"], manifesto["items_id"]), ("Ticket", 35001))
         self.assertEqual(arquivos["filename[0]"], ("print.png", b"png", "image/png"))
 
-    def test_falha_devolve_erro_com_nome(self):
+    def test_manifesto_vincula_ao_followup(self):
+        fake = FakeRequests()
+        fake.programar("POST", "/Document", FakeResponse(201, {"id": 17947}))
+        self.assertIsNone(_client(fake).anexar_documento("ITILFollowup", 78602, "a.xlsx", b"x", "application/xlsx"))
+        manifesto = json.loads(fake.chamadas[-1][2]["files"]["uploadManifest"][1])["input"]
+        self.assertEqual((manifesto["itemtype"], manifesto["items_id"]), ("ITILFollowup", 78602))
+
+    def test_falha_devolve_erro_com_nome_e_item(self):
         fake = FakeRequests()
         fake.programar("POST", "/Document", FakeResponse(400, text="tipo"))
-        self.assertIn("print.png", _client(fake).anexar_documento(35001, "print.png", b"png", "image/png"))
+        erro = _client(fake).anexar_documento("ITILFollowup", 78602, "print.png", b"png", "image/png")
+        self.assertIn("'print.png'", erro)
+        self.assertIn("ITILFollowup #78602 (400)", erro)
 
 
 if __name__ == "__main__":

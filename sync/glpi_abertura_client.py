@@ -98,14 +98,17 @@ class GlpiAberturaClient:
             return None
         return f"Falha ao gravar telefone {telefone} no chamado #{id_glpi} ({resp.status_code}): {resp.text}"
 
-    def anexar_documento(self, id_glpi: int, nome_arquivo: str, conteudo: bytes, mime: str) -> str | None:
+    def anexar_documento(
+        self, itemtype: str, items_id: int, nome_arquivo: str, conteudo: bytes, mime: str,
+    ) -> str | None:
         """
         POST /Document multipart (uploadManifest + filename[0]) já vinculado ao
-        chamado via itemtype/items_id. Devolve o erro, ou None se anexou.
-        Ex.: glpi_abertura.anexar_documento(35001, "print.png", b"...", "image/png") -> None
+        item (Ticket, ou ITILFollowup na spec 014 — doc 17947 -> followup 78602,
+        visto ao vivo). Devolve o erro, ou None se anexou.
+        Ex.: glpi_abertura.anexar_documento("Ticket", 35001, "print.png", b"...", "image/png") -> None
         """
         manifesto = {"input": {"name": nome_arquivo, "_filename": [nome_arquivo],
-                               "itemtype": "Ticket", "items_id": id_glpi}}
+                               "itemtype": itemtype, "items_id": items_id}}
         arquivos = {"uploadManifest": (None, json.dumps(manifesto), "application/json"),
                     "filename[0]": (nome_arquivo, conteudo, mime)}
         resp = self._session.post(
@@ -113,7 +116,7 @@ class GlpiAberturaClient:
         )
         if resp.status_code in (200, 201):
             return None
-        return f"'{nome_arquivo}': falha ao anexar no chamado #{id_glpi} ({resp.status_code}): {resp.text[:200]}"
+        return f"'{nome_arquivo}': falha ao anexar no {itemtype} #{items_id} ({resp.status_code}): {resp.text[:200]}"
 
     def _linha_telefone(self, id_glpi: int) -> int | None:
         linhas = _lista_json(self._get(f"/{_ITEMTYPE_TELEFONE_CHAMADO}", params={"searchText[items_id]": id_glpi}))

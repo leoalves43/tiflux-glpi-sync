@@ -377,6 +377,14 @@ class TifluxClient:
         """GET /tickets/{n}/files: [{"id", "file_name", "content_type", "size", "url" (S3 pré-assinada)}]."""
         return self._listar_paginado("files", ticket_number, tamanho_pagina, max_paginas)
 
+    def listar_arquivos_resposta(self, ticket_number: NumeroTiflux, id_resposta: int) -> list[dict] | None:
+        """GET /tickets/{n}/answers/{id} -> "files" (mesmo formato de /files); None se falhar (spec 014)."""
+        resp = self._session.get(
+            f"{self._url_base}/tickets/{ticket_number}/answers/{id_resposta}",
+            headers=self._headers_get, timeout=self._timeout,
+        )
+        return (resp.json().get("files") or []) if resp.status_code == 200 else None
+
     def baixar_arquivo(self, url: str) -> bytes | None:
         """Conteúdo de uma URL pré-assinada de /files, sem o token (o S3 recusa Authorization extra); None se falhar."""
         resp = self._session.get(url, timeout=self._timeout)

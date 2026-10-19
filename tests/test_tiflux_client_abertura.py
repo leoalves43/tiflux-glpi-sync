@@ -46,6 +46,16 @@ class TestArquivosTicket(unittest.TestCase):
         fake.programar("GET", "/tickets/364925/files", FakeResponse(200, [{"id": 1, "file_name": "a.jpg"}]))
         self.assertEqual(_client(fake).listar_arquivos_ticket(364925, 100, 5), [{"id": 1, "file_name": "a.jpg"}])
 
+    def test_arquivos_da_resposta_vem_do_get_da_resposta(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/tickets/365680/answers/32082144", FakeResponse(200, {"id": 32082144, "files": [{"id": 9}]}))
+        self.assertEqual(_client(fake).listar_arquivos_resposta(365680, 32082144), [{"id": 9}])
+
+    def test_falha_ao_ler_a_resposta_devolve_none(self):
+        fake = FakeRequests()
+        fake.programar("GET", "/tickets/365680/answers/32082144", FakeResponse(404, text="not found"))
+        self.assertIsNone(_client(fake).listar_arquivos_resposta(365680, 32082144))
+
     def test_baixa_sem_o_token_do_tiflux(self):
         fake = FakeRequests()
         fake.programar("GET", "s3.amazonaws.com/a.jpg", FakeResponse(200, content=b"jpg"))

@@ -28,7 +28,7 @@ class TestCopiarAnexosTifluxParaGlpi(unittest.TestCase):
         self.tiflux.arquivos_ticket = [_ARQUIVO]
         self.tiflux.conteudos_por_url["https://s3/erro.jpg"] = b"jpg"
         self.assertEqual(self._copiar(), " | Anexos: 1 copiado(s)")
-        self.assertEqual(self.glpi_abertura.documentos_anexados, [(35001, "erro.jpg", b"jpg", "image/jpeg")])
+        self.assertEqual(self.glpi_abertura.documentos_anexados, [("Ticket", 35001, "erro.jpg", b"jpg", "image/jpeg")])
 
     def test_falhas_de_download_tamanho_e_glpi_entram_no_resumo(self):
         grande = {**_ARQUIVO, "file_name": "video.mp4", "size": 30 * 1024 * 1024}
