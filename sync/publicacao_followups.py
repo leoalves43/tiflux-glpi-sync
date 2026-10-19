@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import requests
 
 from sync import db_followups
+from sync.anexos_tiflux_para_glpi import copiar_anexos_resposta_tiflux_para_glpi
 from sync.config import Config, log
 from sync.glpi_client import GlpiClient
 from sync.regras_negocio import definir_autor_glpi
@@ -190,12 +191,14 @@ def sincronizar_followups_tiflux_para_glpi(
     ja_processados_ou_proprios = db_followups.obter_respostas_tiflux_ja_processadas_ou_proprias(conn, config, numero_tiflux)
     respostas = tiflux.listar_respostas(numero_tiflux, config.tamanho_pagina_respostas_tiflux, config.max_paginas_respostas_tiflux)
 
-    return _publicar_respostas_publicas(conn, config, glpi, id_chamado, numero_tiflux, respostas, ja_processados_ou_proprios, id_autor_glpi)
+    return _publicar_respostas_publicas(
+        conn, config, glpi, tiflux, id_chamado, numero_tiflux, respostas, ja_processados_ou_proprios, id_autor_glpi,
+    )
 
 
 def _publicar_respostas_publicas(
-    conn: ConexaoDb, config: Config, glpi: GlpiClient, id_chamado: int, numero_tiflux: NumeroTiflux,
-    respostas: list[dict], ja_processados_ou_proprios: set[int], id_autor_glpi: int,
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_chamado: int,
+    numero_tiflux: NumeroTiflux, respostas: list[dict], ja_processados_ou_proprios: set[int], id_autor_glpi: int,
 ) -> tuple[int, int]:
     qtd_sucesso = qtd_erro = 0
     # O Tiflux lista da mais nova pra mais antiga; publicar nessa ordem deixava a
@@ -203,18 +206,30 @@ def _publicar_respostas_publicas(
     for resposta in sorted(respostas, key=lambda r: r.get("answer_time") or ""):
         if _deve_ignorar_resposta_publica(resposta, ja_processados_ou_proprios):
             continue
-        id_origem = resposta.get("id")
-        conteudo = html.unescape(resposta.get("name") or "")
-        conteudo = prefixar_autor_tiflux(resposta.get("author"), resposta.get("answer_time"), conteudo)
-        id_criado, erro = glpi.criar_followup(id_chamado, conteudo, is_private=0, users_id=id_autor_glpi)
-        if id_criado is not None:
-            _deixar_pendente_glpi(glpi, id_chamado)
-        sucesso = _registrar_followup_tiflux_para_glpi(
-            conn, config, id_chamado, numero_tiflux, "publica", id_origem, id_criado, erro,
-            mensagem_sucesso=f"Resposta Tiflux #{id_origem} publicada como followup no GLPI (id {id_criado})",
-        )
+        sucesso = _publicar_resposta_publica(conn, config, glpi, tiflux, id_chamado, numero_tiflux, resposta, id_autor_glpi)
         qtd_sucesso, qtd_erro = _acumular(sucesso, qtd_sucesso, qtd_erro)
     return qtd_sucesso, qtd_erro
+
+
+def _publicar_resposta_publica(
+    conn: ConexaoDb, config: Config, glpi: GlpiClient, tiflux: TifluxClient, id_chamado: int,
+    numero_tiflux: NumeroTiflux, resposta: dict, id_autor_glpi: int,
+) -> bool:
+    """Um followup no GLPI por resposta, com os arquivos dela no próprio followup (spec 014 — GLPI #35249)."""
+    id_origem = resposta.get("id")
+    conteudo = html.unescape(resposta.get("name") or "")
+    conteudo = prefixar_autor_tiflux(resposta.get("author"), resposta.get("answer_time"), conteudo)
+    id_criado, erro = glpi.criar_followup(id_chamado, conteudo, is_private=0, users_id=id_autor_glpi)
+    resumo_anexos = ""
+    if id_criado is not None:
+        resumo_anexos = copiar_anexos_resposta_tiflux_para_glpi(
+            tiflux, glpi.cliente_abertura(), config, numero_tiflux, resposta, id_criado,
+        )
+        _deixar_pendente_glpi(glpi, id_chamado)
+    return _registrar_followup_tiflux_para_glpi(
+        conn, config, id_chamado, numero_tiflux, "publica", id_origem, id_criado, erro,
+        mensagem_sucesso=f"Resposta Tiflux #{id_origem} publicada como followup no GLPI (id {id_criado}){resumo_anexos}",
+    )
 
 
 def _deve_ignorar_resposta_publica(resposta: dict, ja_processados_ou_proprios: set[int]) -> bool:

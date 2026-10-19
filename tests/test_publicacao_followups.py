@@ -220,5 +220,57 @@ class TestSincronizarFollowupsTifluxParaGlpi(unittest.TestCase):
         self.assertEqual(self.glpi.chamados_deixados_pendentes, [])
 
 
+_ARQUIVO_RESPOSTA = {"id": 9, "file_name": "a.xlsx", "content_type": "application/xlsx", "size": 4028, "url": "https://s3/a.xlsx"}
+
+
+class TestAnexosDaRespostaTifluxNoFollowupGlpi(unittest.TestCase):
+    """Spec 014 (GLPI #35249): arquivos da resposta vão pro followup que ela gerou."""
+
+    def setUp(self):
+        self.glpi = FakeGlpiClient()
+        self.tiflux = FakeTifluxClient()
+        self.conn = FakeConnection(respostas=[[]])
+        self.tiflux.respostas = [{"id": 32082144, "name": "planilhas", "files_count": 1}]
+        self.tiflux.arquivos_por_resposta[32082144] = [_ARQUIVO_RESPOSTA]
+        self.tiflux.conteudos_por_url["https://s3/a.xlsx"] = b"xlsx"
+
+    def _sincronizar(self) -> tuple[int, int]:
+        return sincronizar_followups_tiflux_para_glpi(self.conn, _CONFIG, self.glpi, self.tiflux, 35249, 365680)
+
+    def _mensagem_auditada(self) -> str:
+        return next(p for _, params in self.conn.execucoes for p in (params or ()) if "publicada como followup" in str(p))
+
+    def test_arquivo_vai_pro_followup_criado(self):
+        self.assertEqual(self._sincronizar(), (1, 0))
+        id_followup = self.glpi.proximo_id_followup
+        self.assertEqual(
+            self.glpi.cliente_abertura().documentos_anexados,
+            [("ITILFollowup", id_followup, "a.xlsx", b"xlsx", "application/xlsx")],
+        )
+        self.assertIn("| Anexos: 1 copiado(s)", self._mensagem_auditada())
+
+    def test_resposta_sem_arquivos_nao_le_a_resposta_no_tiflux(self):
+        self.tiflux.respostas = [{"id": 1, "name": "texto", "files_count": 0}]
+        self._sincronizar()
+        self.assertEqual(self.tiflux.respostas_com_arquivos_lidas, [])
+        self.assertEqual(self.glpi.cliente_abertura().documentos_anexados, [])
+
+    def test_falha_no_anexo_fica_na_mensagem_e_followup_segue_sucesso(self):
+        self.tiflux.conteudos_por_url.clear()
+        self.assertEqual(self._sincronizar(), (1, 0))
+        self.assertIn("'a.xlsx': falha ao baixar do Tiflux", self._mensagem_auditada())
+
+    def test_falha_ao_ler_a_resposta_fica_na_mensagem(self):
+        self.tiflux.arquivos_por_resposta[32082144] = None
+        self.assertEqual(self._sincronizar(), (1, 0))
+        self.assertIn("falha ao ler os 1 arquivo(s)", self._mensagem_auditada())
+
+    def test_falha_ao_criar_followup_nao_envia_anexo(self):
+        self.glpi.erro_ao_criar_followup = "Falha ao criar followup no GLPI (500): boom"
+        self.assertEqual(self._sincronizar(), (0, 1))
+        self.assertEqual(self.tiflux.respostas_com_arquivos_lidas, [])
+        self.assertEqual(self.glpi.cliente_abertura().documentos_anexados, [])
+
+
 if __name__ == "__main__":
     unittest.main()

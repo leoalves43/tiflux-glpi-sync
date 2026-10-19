@@ -88,7 +88,8 @@ de chamado novo do GLPI.
   - acompanhamento público do GLPI vira resposta no Tiflux, com o nome do
     autor; anexos vão junto (até 10 por resposta; o excedente vai para o ticket);
   - resposta pública do Tiflux vira acompanhamento no GLPI, com o nome de quem
-    respondeu e a data, e o chamado fica Pendente.
+    respondeu e a data, e o chamado fica Pendente; os arquivos da resposta
+    ficam no próprio acompanhamento.
   - Comentários privados e comunicações internas não cruzam.
 - **Validação no GLPI:** o pedido de validação vira resposta no Tiflux
   ("🔐 Validação solicitada a ...", autor = quem pediu) e a decisão também
@@ -319,7 +320,8 @@ Linhas `erro` são retentadas sozinhas; `ignorado` é definitivo.
 na criação GLPI -> Tiflux: é um par provável sem auditoria. Confira no Tiflux e
 vincule à mão.
 
-**Anexo que não chegou ao GLPI.** O log mostra o arquivo e o motivo. Acima de
+**Anexo que não chegou ao GLPI.** O log (abertura) ou a `mensagem` da linha
+`tiflux_para_glpi` na auditoria (resposta) mostra o arquivo e o motivo. Acima de
 ~2 MB o servidor do GLPI recusa (`Arquivo ... não encontrado`); a correção é
 aumentar `upload_max_filesize` e `post_max_size` no PHP do GLPI.
 

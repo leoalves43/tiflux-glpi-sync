@@ -1,6 +1,8 @@
 import unittest
 
-from sync.anexos_tiflux_para_glpi import copiar_anexos_tiflux_para_glpi
+from requests import Timeout
+
+from sync.anexos_tiflux_para_glpi import copiar_anexos_resposta_tiflux_para_glpi, copiar_anexos_tiflux_para_glpi
 from sync.config import Config
 from tests.fake_clients import FakeGlpiAberturaClient, FakeTifluxClient
 
@@ -44,6 +46,41 @@ class TestCopiarAnexosTifluxParaGlpi(unittest.TestCase):
         self.tiflux.conteudos_por_url["https://s3/erro.jpg"] = b"jpg"
         self.glpi_abertura.erro_ao_anexar = "'erro.jpg': falha ao anexar (400)"
         self.assertIn("1 falhou(aram)", self._copiar())
+
+    def test_erro_de_rede_vira_falha_sem_escapar(self):
+        self.tiflux.arquivos_ticket = [_ARQUIVO]
+        self.tiflux.baixar_arquivo = FakeDownloadComTimeout()
+        self.assertIn("'erro.jpg': erro de rede (Timeout)", self._copiar())
+
+
+class FakeDownloadComTimeout:
+    """baixar_arquivo que levanta como requests faria num timeout do S3."""
+
+    def __call__(self, url: str) -> bytes | None:
+        raise Timeout(url)
+
+
+class TestCopiarAnexosRespostaTifluxParaGlpi(unittest.TestCase):
+    def setUp(self):
+        self.tiflux = FakeTifluxClient()
+        self.glpi_abertura = FakeGlpiAberturaClient()
+
+    def _copiar(self, resposta: dict) -> str:
+        return copiar_anexos_resposta_tiflux_para_glpi(self.tiflux, self.glpi_abertura, _CONFIG, 365680, resposta, 78602)
+
+    def test_sem_files_count_nao_le_a_resposta(self):
+        self.assertEqual(self._copiar({"id": 1, "files_count": 0}), "")
+        self.assertEqual(self.tiflux.respostas_com_arquivos_lidas, [])
+
+    def test_arquivos_vao_pro_followup(self):
+        self.tiflux.arquivos_por_resposta[1] = [_ARQUIVO, {**_ARQUIVO, "url": "https://s3/b.jpg", "file_name": "b.jpg"}]
+        self.tiflux.conteudos_por_url.update({"https://s3/erro.jpg": b"a", "https://s3/b.jpg": b"b"})
+        self.assertEqual(self._copiar({"id": 1, "files_count": 2}), " | Anexos: 2 copiado(s)")
+        self.assertEqual([d[:3] for d in self.glpi_abertura.documentos_anexados],
+                         [("ITILFollowup", 78602, "erro.jpg"), ("ITILFollowup", 78602, "b.jpg")])
+
+    def test_falha_ao_ler_a_resposta(self):
+        self.assertIn("falha ao ler os 3 arquivo(s)", self._copiar({"id": 1, "files_count": 3}))
 
 
 if __name__ == "__main__":

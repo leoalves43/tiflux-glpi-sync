@@ -37,7 +37,8 @@ Three sync passes per run, all driven from `sync/main.py:main()`:
      Tiflux `/client-answers`, always with the GLPI author's name (public only).
    - `publicar_validacoes_no_tiflux()` (spec 013, off unless `VALIDACAO_GLPI_DESDE_ID`) —
      GLPI `TicketValidation` request/answer -> `/client-answers`; skipped if `global_validation`=1.
-   - `sincronizar_followups_tiflux_para_glpi()` — Tiflux answers/internal communications -> GLPI.
+   - `sincronizar_followups_tiflux_para_glpi()` — Tiflux public answers -> GLPI followup; answer files
+     (`files_count`>0) -> Documents on that followup (spec 014, `anexos_tiflux_para_glpi`).
    Cascade is Tiflux -> GLPI, except: a cascade-closed chamado reopened in GLPI while
    Tiflux is closed -> `reabrir_tiflux_apos_recusa_glpi()` reopens Tiflux (retries each run, spec 004).
    Every GLPI ticket the integration creates, reopens or answers ends Pendente (4).
