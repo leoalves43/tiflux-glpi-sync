@@ -29,11 +29,13 @@ def copiar_anexos_tiflux_para_glpi(
 
 def copiar_anexos_resposta_tiflux_para_glpi(
     tiflux: TifluxClient, glpi_abertura: GlpiAberturaClient, config: Config, numero_tiflux: NumeroTiflux,
-    resposta: dict, id_followup: int,
+    resposta: dict, id_item: int, itemtype: str = "ITILFollowup",
 ) -> str:
     """
-    Copia os arquivos da resposta pública pro followup GLPI que ela gerou; "" sem
-    arquivos. Só lê a resposta no Tiflux se a listagem disse files_count > 0 (spec 007).
+    Copia os arquivos da resposta pública pro item GLPI que ela gerou — o
+    followup, ou a solução do encerramento em cascata (itemtype="ITILSolution",
+    GLPI #35383); "" sem arquivos. Só lê a resposta no Tiflux se a listagem
+    disse files_count > 0 (spec 007).
     Ex.: copiar_anexos_resposta_tiflux_para_glpi(tiflux, ga, config, 365680, {"id": 32082144, "files_count": 7}, 78602)
     -> " | Anexos: 7 copiado(s)"
     """
@@ -42,7 +44,7 @@ def copiar_anexos_resposta_tiflux_para_glpi(
     arquivos = _ler_arquivos_resposta(tiflux, numero_tiflux, resposta.get("id"))
     if arquivos is None:
         return f" | Anexos: falha ao ler os {resposta.get('files_count')} arquivo(s) da resposta no Tiflux"
-    return _copiar_todos(tiflux, glpi_abertura, config, arquivos, "ITILFollowup", id_followup)
+    return _copiar_todos(tiflux, glpi_abertura, config, arquivos, itemtype, id_item)
 
 
 def _ler_arquivos_resposta(tiflux: TifluxClient, numero_tiflux: NumeroTiflux, id_resposta: int) -> list[dict] | None:

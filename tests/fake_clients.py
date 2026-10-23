@@ -43,7 +43,7 @@ class FakeGlpiClient:
         self.resultado_atribuir_tecnico_glpi: tuple[bool, str | None] = (True, None)
         self.tecnico_ja_atribuido: dict[int, int | None] = {}
         self.solucoes_registradas: list[tuple[int, str]] = []
-        self.resultado_registrar_solucao: tuple[bool, str | None] = (True, None)
+        self.resultado_registrar_solucao: tuple[int | None, str | None] = (900, None)
         self.ja_tem_solucao: dict[int, bool] = {}
         self.chamados_deixados_pendentes: list[int] = []
         self.resultado_definir_status_pendente: tuple[bool, str | None] = (True, None)

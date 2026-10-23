@@ -134,6 +134,27 @@ class TestPreparacaoEncerramentoCascata(unittest.TestCase):
         sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste())
         self.assertEqual(self.glpi.solucoes_registradas, [(1, "Chamado encerrado no Tiflux por agrupamento a outro ticket.")])
 
+    def test_arquivos_da_resposta_usada_sao_anexados_na_solucao(self):
+        # GLPI #35383: o followup da resposta levava o anexo, a solução não.
+        self.tiflux.respostas = [{"id": 2, "name": "segue print", "answer_time": "2026-10-20T10:00:00Z",
+                                  "author": "Leonardo", "files_count": 1}]
+        self.tiflux.arquivos_por_resposta[2] = [{"id": 9, "file_name": "print.png", "url": "u", "size": 10,
+                                                 "content_type": "image/png"}]
+        self.tiflux.conteudos_por_url["u"] = b"png"
+        conn = FakeConnection(respostas=[[(1, "T-1")], [], []])
+        sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste())
+        self.assertIn(("ITILSolution", 900, "print.png", b"png", "image/png"),
+                      self.glpi.cliente_abertura().documentos_anexados)
+
+    def test_falha_ao_registrar_solucao_nao_anexa_arquivos(self):
+        self.glpi.resultado_registrar_solucao = (None, "boom")
+        self.tiflux.respostas = [{"id": 2, "name": "segue print", "author": "Leonardo", "files_count": 1}]
+        self.tiflux.arquivos_por_resposta[2] = [{"id": 9, "file_name": "print.png", "url": "u", "size": 10}]
+        self.tiflux.conteudos_por_url["u"] = b"png"
+        conn = FakeConnection(respostas=[[(1, "T-1")], [], []])
+        sincronizar_followups(conn, _CONFIG, self.glpi, self.tiflux, panorama_de_teste())
+        self.assertFalse(any(d[0] == "ITILSolution" for d in self.glpi.cliente_abertura().documentos_anexados))
+
     def test_nao_registra_solucao_de_novo_se_ja_tem(self):
         self.glpi.ja_tem_solucao[1] = True
         conn = FakeConnection(respostas=[[(1, "T-1")], [], []])

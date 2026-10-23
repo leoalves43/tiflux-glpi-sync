@@ -3,6 +3,7 @@
 import html
 
 from sync import db_followups
+from sync.anexos_tiflux_para_glpi import copiar_anexos_resposta_tiflux_para_glpi
 from sync.config import Config, log
 from sync.glpi_client import GlpiClient
 from sync.placar_followups import PlacarFollowups
@@ -183,8 +184,7 @@ def encerrar_em_cascata(
         glpi.atribuir_tecnico(id_glpi, definir_autor_glpi(config))
 
     if not glpi.solucao_registrada(id_glpi):
-        conteudo_solucao = _ultima_resposta_publica_tiflux(tiflux, numero_tiflux, config, ticket_tiflux)
-        glpi.registrar_solucao(id_glpi, conteudo_solucao)
+        _registrar_solucao_com_anexos(glpi, tiflux, config, id_glpi, numero_tiflux, ticket_tiflux)
 
     _mudar_status_em_cascata(
         conn, config, glpi, id_glpi, numero_tiflux, STATUS_GLPI_SOLUCIONADO, "encerramento",
@@ -211,23 +211,44 @@ def _mensagem_encerramento_sem_resposta(ticket_tiflux: dict) -> str:
     return "Chamado encerrado no Tiflux por agrupamento a outro ticket."
 
 
+def _registrar_solucao_com_anexos(
+    glpi: GlpiClient, tiflux: TifluxClient, config: Config, id_glpi: int, numero_tiflux: NumeroTiflux,
+    ticket_tiflux: dict,
+) -> None:
+    """
+    Registra a solução e copia pra ela os arquivos da mesma resposta do Tiflux
+    — GLPI #35383: o followup dessa resposta levava o anexo, a solução (mesmo
+    texto) não. Falha nos anexos só loga: a solução já existe e não é refeita.
+    """
+    conteudo_solucao, resposta = _ultima_resposta_publica_tiflux(tiflux, numero_tiflux, config, ticket_tiflux)
+    id_solucao, _ = glpi.registrar_solucao(id_glpi, conteudo_solucao)
+    if id_solucao is None or resposta is None:
+        return
+    resumo_anexos = copiar_anexos_resposta_tiflux_para_glpi(
+        tiflux, glpi.cliente_abertura(), config, numero_tiflux, resposta, id_solucao, "ITILSolution",
+    )
+    if resumo_anexos:
+        log(f"Solução do chamado #{id_glpi} (id {id_solucao}){resumo_anexos}")
+
+
 def _ultima_resposta_publica_tiflux(
     tiflux: TifluxClient, numero_tiflux: NumeroTiflux, config: Config, ticket_tiflux: dict,
-) -> str:
+) -> tuple[str, dict | None]:
     """
     A resposta pública (/answers) mais recente escrita por um técnico no
     Tiflux, por answer_time, vira o conteúdo da solução no GLPI (prefixada
     com autor+data, mesmo padrão dos followups). Respostas criadas pela
     própria integração (followups vindos do GLPI) ficam de fora — GLPI #34522
     fechou com o followup do Marcio como solução em vez da resposta do técnico.
+    Retorna (conteúdo, resposta usada ou None se caiu no texto padrão).
     """
     todas = tiflux.listar_respostas(numero_tiflux, config.tamanho_pagina_respostas_tiflux, config.max_paginas_respostas_tiflux)
     respostas = [r for r in todas if not resposta_criada_pela_integracao(r)]
     if not respostas:
-        return _mensagem_encerramento_sem_resposta(ticket_tiflux)
+        return _mensagem_encerramento_sem_resposta(ticket_tiflux), None
     mais_recente = max(respostas, key=lambda r: r.get("answer_time") or "")
     conteudo = html.unescape(mais_recente.get("name") or "") or _mensagem_encerramento_sem_resposta(ticket_tiflux)
-    return prefixar_autor_tiflux(mais_recente.get("author"), mais_recente.get("answer_time"), conteudo)
+    return prefixar_autor_tiflux(mais_recente.get("author"), mais_recente.get("answer_time"), conteudo), mais_recente
 
 
 def _mudar_status_em_cascata(

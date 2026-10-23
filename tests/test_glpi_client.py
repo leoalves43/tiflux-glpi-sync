@@ -225,12 +225,12 @@ class TestTecnicoAtribuido(unittest.TestCase):
 
 
 class TestRegistrarSolucao(unittest.TestCase):
-    def test_sucesso_retorna_true(self):
+    def test_sucesso_retorna_id_criado(self):
         fake = FakeRequests()
-        fake.programar("POST", "/ITILSolution", FakeResponse(201, {"id": 1}))
+        fake.programar("POST", "/ITILSolution", FakeResponse(201, {"id": 7}))
         with patch("sync.glpi_client.requests", fake):
-            sucesso, erro = _client(fake).registrar_solucao(1, "resolvido")
-        self.assertEqual((sucesso, erro), (True, None))
+            id_criado, erro = _client(fake).registrar_solucao(1, "resolvido")
+        self.assertEqual((id_criado, erro), (7, None))
         _, _, kwargs = fake.chamadas[-1]
         self.assertEqual(kwargs["json"]["input"]["content"], "resolvido")
 
@@ -238,8 +238,8 @@ class TestRegistrarSolucao(unittest.TestCase):
         fake = FakeRequests()
         fake.programar("POST", "/ITILSolution", FakeResponse(400, text="bad request"))
         with patch("sync.glpi_client.requests", fake):
-            sucesso, erro = _client(fake).registrar_solucao(1, "resolvido")
-        self.assertFalse(sucesso)
+            id_criado, erro = _client(fake).registrar_solucao(1, "resolvido")
+        self.assertIsNone(id_criado)
         self.assertIn("400", erro)
 
 

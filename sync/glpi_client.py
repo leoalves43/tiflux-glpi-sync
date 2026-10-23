@@ -296,17 +296,22 @@ class GlpiClient:
                 return vinculo.get("users_id")
         return None
 
-    def registrar_solucao(self, id_chamado: int, conteudo: str) -> tuple[bool, str | None]:
+    def registrar_solucao(self, id_chamado: int, conteudo: str) -> tuple[int | None, str | None]:
         """
         POST /ITILSolution. Pré-requisito dessa instalação do GLPI pra aceitar
         status Solucionado/Fechado depois — ver encerrar_chamado().
-        Retorna (sucesso, erro_ou_None).
+        Retorna (id_criado, erro_ou_None); o id serve pra anexar arquivos na
+        solução (GLPI #35383).
         """
         payload = {"input": {"itemtype": "Ticket", "items_id": id_chamado, "content": conteudo}}
         resp = self._session.post(f"{self._url_base}/ITILSolution", json=payload, headers=self._headers, timeout=self._timeout)
         if resp.status_code not in (200, 201):
-            return False, f"Falha ao registrar solução no GLPI pro chamado #{id_chamado} ({resp.status_code}): {resp.text}"
-        return True, None
+            return None, f"Falha ao registrar solução no GLPI pro chamado #{id_chamado} ({resp.status_code}): {resp.text}"
+        dados = resp.json()
+        id_criado = dados.get("id") if isinstance(dados, dict) else None
+        if not id_criado:
+            return None, "Solução registrada no GLPI, mas não foi possível identificar o id na resposta"
+        return id_criado, None
 
     _STATUS_SOLUCAO_RECUSADA = 4  # confirmado ao vivo em GLPI #34187, 2026-09-17
 
